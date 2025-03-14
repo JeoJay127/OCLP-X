@@ -1,0 +1,102 @@
+name: Sync and Update
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  check-updates:
+    runs-on: macos-13
+    outputs:
+      has_updates: ${{ steps.check-updates.outputs.has_updates }}
+    steps:
+      - name: Check for updates
+        id: check-updates
+        run: |
+          curl -s https://raw.githubusercontent.com/dortania/OpenCore-Legacy-Patcher/main/CHANGELOG.md -o upstream_CHANGELOG.md
+          upstream_version=$(grep -m 1 '## ' upstream_CHANGELOG.md | cut -d ' ' -f 2)
+          curl -s https://raw.githubusercontent.com/${{ github.repository }}/main/CHANGELOG.md -o local_CHANGELOG.md
+          local_version=$(grep -E '^## [0-9]+\.[0-9]+\.[0-9]+' local_CHANGELOG.md | head -n 1 | awk '{print $2}')
+
+          if [ "$local_version" = "$upstream_version" ]; then
+            echo "No updates found."
+            echo "has_updates=false" >> $GITHUB_OUTPUT
+          else
+            echo "Updates found: Local $local_version -> Upstream $upstream_version"
+            echo "has_updates=true" >> $GITHUB_OUTPUT
+          fi
+
+  sync-and-build:
+    needs: check-updates
+    if: needs.check-updates.outputs.has_updates == 'true' || github.event_name == 'release'
+    runs-on: macos-13
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Ensure upstream is set and fetch changes
+        run: |
+          git remote get-url upstream || git remote add upstream https://github.com/dortania/OpenCore-Legacy-Patcher.git
+          git fetch upstream main --depth=1
+
+      - name: Merge upstream changes
+        run: |
+          git checkout main
+          git merge upstream/main --no-commit --no-ff --allow-unrelated-histories || true
+
+          git restore --staged .github/
+          git restore .github/
+
+          EXCLUDES=(
+            "opencore_legacy_patcher/custom/"
+            "opencore_legacy_patcher/__init__.py"
+            "ci_tooling/privileged_helper_tool/com.dortania.opencore-legacy-patcher.privileged-helper"
+            "README.md"
+            "README_CN.md"
+            "LICENSE"
+          )
+
+          for exclude in "${EXCLUDES[@]}"; do
+            git checkout --ours "$exclude"
+            git add "$exclude"
+          done
+
+          git diff --name-only --diff-filter=U | while read -r file; do
+            should_exclude=false
+            for exclude in "${EXCLUDES[@]}"; do
+              if [[ $file == $exclude* ]]; then
+                should_exclude=true
+                break
+              fi
+            done
+            if [ "$should_exclude" = false ]; then
+              git checkout --theirs "$file"
+              git add "$file"
+            fi
+          done
+
+          git commit -m "Merge upstream changes while preserving local modifications"
+
+      - name: Push changes to origin
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git push origin main
+
+      - name: Trigger build
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: CI - Build wxPython
+          token: ${{ secrets.GITHUB_TOKEN }}

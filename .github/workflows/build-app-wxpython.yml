@@ -1,130 +1,88 @@
 name: CI - Build wxPython
 
 on:
-  push:
-    paths-ignore:
-      - 'docs/**'
   workflow_dispatch:
-  release:
-    types: [published]
 
+permissions:
+  contents: write
+  deployments: write
+  
 jobs:
   build:
     name: Build wxPython
-    runs-on: x86_64_monterey
-    if: github.repository_owner == 'dortania'
+    runs-on: macos-13
+    if: github.repository_owner == 'JeoJay127'
 
     env:
-      # GitHub Information
       branch: ${{ github.ref }}
-      commiturl: ${{ github.event.head_commit.url }}${{ github.event.release.html_url }}
-      commitdate: ${{ github.event.head_commit.timestamp }}${{ github.event.release.published_at }}
-
-      # Analytics
+      commiturl: ${{ github.event.head_commit.url || github.event.release.html_url }}
+      commitdate: ${{ github.event.head_commit.timestamp || github.event.release.published_at }}
       ANALYTICS_KEY: ${{ secrets.ANALYTICS_KEY }}
       ANALYTICS_SITE: ${{ secrets.ANALYTICS_SITE }}
 
-      # App Signing
-      ORG_MAC_DEVELOPER_ID_APPLICATION_IDENTITY: ${{ secrets.ORG_MAC_DEVELOPER_ID_APPLICATION_IDENTITY }}
-
-      # PKG Signing
-      ORG_MAC_DEVELOPER_ID_INSTALLER_IDENTITY: ${{ secrets.ORG_MAC_DEVELOPER_ID_INSTALLER_IDENTITY }}
-
-      # Notarization
-      ORG_MAC_NOTARIZATION_TEAM_ID: ${{ secrets.ORG_MAC_NOTARIZATION_TEAM_ID }}
-      ORG_MAC_NOTARIZATION_APPLE_ID: ${{ secrets.ORG_MAC_NOTARIZATION_APPLE_ID }}
-      ORG_MAC_NOTARIZATION_PASSWORD: ${{ secrets.ORG_MAC_NOTARIZATION_PASSWORD }}
-
     steps:
       - uses: actions/checkout@v4
-
-      # - name: Import Application Signing Certificate
-      #   uses: dhinakg/import-codesign-certs@master
-      #   with:
-      #     p12-file-base64: ${{ secrets.ORG_MAC_DEVELOPER_ID_APPLICATION_CERT_P12_BASE64 }}
-      #     p12-password: ${{ secrets.ORG_MAC_DEVELOPER_ID_APPLICATION_CERT_P12_PASSWORD }}
-
-      # - name: Import Installer Signing Certificate
-      #   uses: dhinakg/import-codesign-certs@master
-      #   with:
-      #     p12-file-base64: ${{ secrets.ORG_MAC_DEVELOPER_ID_INSTALLER_CERT_P12_BASE64 }}
-      #     p12-password: ${{ secrets.ORG_MAC_DEVELOPER_ID_INSTALLER_CERT_P12_PASSWORD }}
-
-      # - name: Install Dependencies
-      #   run: /Library/Frameworks/Python.framework/Versions/3.11/bin/python3 -m pip install -r requirements.txt
-
-      # - name: Force Universal2 charset for Python
-      #   run: |
-      #     /Library/Frameworks/Python.framework/Versions/3.11/bin/python3 -m pip uninstall -y charset_normalizer
-      #     /Library/Frameworks/Python.framework/Versions/3.11/bin/python3 -m pip download --platform macosx_10_9_universal2 --only-binary=:all: charset-normalizer
-      #     /Library/Frameworks/Python.framework/Versions/3.11/bin/python3 -m pip install charset_normalizer-*-macosx_10_9_universal2.whl
-
-      - name: Prepare Assets (--prepare-assets)
-        run: >
-          /Library/Frameworks/Python.framework/Versions/3.11/bin/python3 Build-Project.command
-          --run-as-individual-steps --reset-dmg-cache
-          --prepare-assets
-
-      - name: Prepare Application (--prepare-application)
-        run: >
-          /Library/Frameworks/Python.framework/Versions/3.11/bin/python3 Build-Project.command
-          --application-signing-identity "${{ env.ORG_MAC_DEVELOPER_ID_APPLICATION_IDENTITY }}"
-          --notarization-apple-id "${{ env.ORG_MAC_NOTARIZATION_APPLE_ID }}" --notarization-password "${{ env.ORG_MAC_NOTARIZATION_PASSWORD }}" --notarization-team-id "${{ env.ORG_MAC_NOTARIZATION_TEAM_ID }}"
-          --git-branch "${{ env.branch }}" --git-commit-url "${{ env.commiturl }}" --git-commit-date "${{ env.commitdate }}"
-          --analytics-key "${{ env.ANALYTICS_KEY }}" --analytics-endpoint "${{ env.ANALYTICS_SITE }}"
-          --reset-pyinstaller-cache
-          --run-as-individual-steps
-          --prepare-application
-
-      - name: Prepare Package (--prepare-package)
-        run: >
-          /Library/Frameworks/Python.framework/Versions/3.11/bin/python3 Build-Project.command
-          --installer-signing-identity "${{ env.ORG_MAC_DEVELOPER_ID_INSTALLER_IDENTITY }}"
-          --notarization-apple-id "${{ env.ORG_MAC_NOTARIZATION_APPLE_ID }}" --notarization-password "${{ env.ORG_MAC_NOTARIZATION_PASSWORD }}" --notarization-team-id "${{ env.ORG_MAC_NOTARIZATION_TEAM_ID }}"
-          --run-as-individual-steps
-          --prepare-package
-
-      - name: Upload AutoPkg Package to Artifacts
-        uses: actions/upload-artifact@v4
+     
+      - name: Install Python
+        uses: actions/setup-python@v2
         with:
-          name: AutoPkg-Assets.pkg
-          path: ./dist/AutoPkg-Assets.pkg
+          python-version: '3.11.9'
 
-      - name: Upload Installation Package to Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: OpenCore-Patcher.pkg
-          path: ./dist/OpenCore-Patcher.pkg
+      - name: Install Dependencies
+        run: python3 -m pip install --requirement requirements.txt
 
-      - name: Upload Uninstaller Package to Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: OpenCore-Patcher-Uninstaller.pkg
-          path: ./dist/OpenCore-Patcher-Uninstaller.pkg
+      - name: Force Universal2 charset for Python
+        run: |
+          python3 -m pip uninstall -y charset_normalizer
+          python3 -m pip download --platform macosx_10_9_universal2 --only-binary=:all: charset-normalizer
+          python3 -m pip install charset_normalizer-*-macosx_10_9_universal2.whl
 
-      - name: Upload AutoPkg Package to Release
-        if: github.event_name == 'release'
-        uses: svenstaro/upload-release-action@e74ff71f7d8a4c4745b560a485cc5fdb9b5b999d
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./dist/AutoPkg-Assets.pkg
-          tag: ${{ github.ref }}
-          file_glob: true
+      - name: Prepare Build Steps
+        run: |
+          python3 Build-Project.command --run-as-individual-steps --reset-dmg-cache --prepare-assets
+          python3 Build-Project.command --git-branch "${{ env.branch }}" \
+            --git-commit-url "${{ env.commiturl }}" --git-commit-date "${{ env.commitdate }}" \
+            --analytics-key "${{ env.ANALYTICS_KEY }}" --analytics-endpoint "${{ env.ANALYTICS_SITE }}" \
+            --reset-pyinstaller-cache --run-as-individual-steps --prepare-application
+          python3 Build-Project.command --run-as-individual-steps --prepare-package
 
-      - name: Upload Installation Package to Release
-        if: github.event_name == 'release'
-        uses: svenstaro/upload-release-action@e74ff71f7d8a4c4745b560a485cc5fdb9b5b999d
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./dist/OpenCore-Patcher.pkg
-          tag: ${{ github.ref }}
-          file_glob: true
+      - name: Prepare Release 
+        id: parse_version
+        run: |
+           
+            if [[ ! -f CHANGELOG.md ]]; then
+              echo "CHANGELOG.md not found!" >&2
+              exit 1
+            fi
 
-      - name: Upload Uninstaller Package to Release
-        if: github.event_name == 'release'
-        uses: svenstaro/upload-release-action@e74ff71f7d8a4c4745b560a485cc5fdb9b5b999d
+            LATEST_VERSION=$(grep -oE '^## [0-9]+\.[0-9]+\.[0-9]+' CHANGELOG.md | head -1 | awk '{print $2}') || { echo "Failed to retrieve version!" >&2; exit 1; }
+            
+            echo "new_version=$LATEST_VERSION" >> $GITHUB_ENV
+
+            sed -n "/## $LATEST_VERSION/,/## [0-9]\+\.[0-9]\+\.[0-9]\+/ {
+              /## $LATEST_VERSION/! { 
+                /##/ { 
+                  q 
+                }
+                p
+              }
+            }" CHANGELOG.md > release_notes.txt
+
+            if [[ ! -s release_notes.txt ]]; then
+              echo "Failed to extract release notes!" >&2
+              exit 1
+            fi
+
+      - name: Create GitHub Release and Upload Assets
+        uses: softprops/action-gh-release@v2
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./dist/OpenCore-Patcher-Uninstaller.pkg
-          tag: ${{ github.ref }}
-          file_glob: true
+          tag_name: v${{ env.new_version }}
+          name: ${{ env.new_version }}
+          body_path: release_notes.txt
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            ./dist/AutoPkg-Assets.pkg
+            ./dist/OpenCore-Patcher.pkg
+            ./dist/OpenCore-Patcher-Uninstaller.pkg
