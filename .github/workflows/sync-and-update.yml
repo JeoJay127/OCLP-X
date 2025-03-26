@@ -24,9 +24,9 @@ jobs:
         id: check-updates
         run: |
           curl -s https://raw.githubusercontent.com/dortania/OpenCore-Legacy-Patcher/main/CHANGELOG.md -o upstream_CHANGELOG.md
-          upstream_version=$(grep -m 1 '## ' upstream_CHANGELOG.md | cut -d ' ' -f 2)
+          upstream_version=$(grep -E '^## [0-9]+\.[0-9]+\.[0-9]+' upstream_CHANGELOG.md | head -n 1 | awk '{print $2}')
           curl -s https://raw.githubusercontent.com/${{ github.repository }}/main/CHANGELOG.md -o local_CHANGELOG.md
-          local_version=$(grep -E '^## [0-9]+\.[0-9]+\.[0-9]+' local_CHANGELOG.md | head -n 1 | awk '{print $2}')
+          local_version=$(grep -m 1 '## ' local_CHANGELOG.md | cut -d ' ' -f 2)
 
           if [ "$local_version" = "$upstream_version" ]; then
             echo "No updates found."
@@ -40,22 +40,42 @@ jobs:
     needs: check-updates
     if: needs.check-updates.outputs.has_updates == 'true' || github.event_name == 'release'
     runs-on: macos-13
+    concurrency:
+      group: sync-and-build
+      cancel-in-progress: false
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Ensure upstream is set and fetch changes
         run: |
-          git remote get-url upstream || git remote add upstream https://github.com/dortania/OpenCore-Legacy-Patcher.git
-          git fetch upstream main --depth=1
+          if ! git remote | grep -q "upstream"; then
+            git remote add upstream https://github.com/dortania/OpenCore-Legacy-Patcher.git
+          fi
+          git fetch upstream main
+
+      - name: Remove Git index lock if exists
+        run: |
+          if [ -f .git/index.lock ]; then
+            rm -f .git/index.lock
+            echo "Removed existing .git/index.lock"
+          fi
+          sleep 2  
 
       - name: Merge upstream changes
         run: |
           git checkout main
-          git merge upstream/main --no-commit --no-ff --allow-unrelated-histories || true
 
-          git restore --staged .github/
-          git restore .github/
+          if ! git merge --strategy=recursive -X theirs --no-edit upstream/main; then
+            echo "Merge encountered conflicts, attempting resolution..."
+          fi
+         
+          if [[ -d .github/ ]]; then
+            git checkout HEAD -- .github/
+            git add .github/
+          fi
 
           EXCLUDES=(
             "opencore_legacy_patcher/custom/"
@@ -71,21 +91,19 @@ jobs:
             git add "$exclude"
           done
 
+          if git ls-files -u | grep -q "LICENSE.txt"; then
+            git checkout --theirs LICENSE.txt
+            git add LICENSE.txt
+          fi
+
           git diff --name-only --diff-filter=U | while read -r file; do
-            should_exclude=false
-            for exclude in "${EXCLUDES[@]}"; do
-              if [[ $file == $exclude* ]]; then
-                should_exclude=true
-                break
-              fi
-            done
-            if [ "$should_exclude" = false ]; then
-              git checkout --theirs "$file"
-              git add "$file"
-            fi
+            git checkout --theirs "$file"
+            git add "$file"
           done
 
-          git commit -m "Merge upstream changes while preserving local modifications"
+          if ! git diff --cached --quiet; then
+            git commit -m "Merge upstream changes while preserving local modifications"
+          fi
 
       - name: Push changes to origin
         env:

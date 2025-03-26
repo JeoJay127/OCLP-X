@@ -3,7 +3,8 @@
              <h1>OpenCore Legacy Patcher</h1>
 </div>
 
-[English](README.md)
+- **简体中文**
+- [English](./README.md)
 
 一个官方修改版的 Python 项目，围绕 [Acidanthera 的 OpenCorePkg](https://github.com/acidanthera/OpenCorePkg) 和 [Lilu](https://github.com/acidanthera/Lilu) 开发，旨在在受支持和不受支持的 Mac 上运行 macOS 并解锁其功能。
 
@@ -14,7 +15,7 @@
 ## OpenCore Legacy Patcher 的重要功能：
 
 * 支持 macOS Big Sur、Monterey、Ventura、Sonoma 和 Sequoia
-* 原生支持 OTA（无线）系统更新
+* 原生支持 OTA（在线）系统更新
 * 兼容 Penryn 及更新的 Mac 机型
 * 完全支持 WPA Wi-Fi 及个人热点，适用于 BCM943224 及更新的无线芯片组
 * 支持系统完整性保护（SIP）、FileVault 2、.im4m 安全启动和 Vaulting
@@ -76,7 +77,7 @@ Kernel - Force中新增补丁：
 
 注：
   1. AirportItlwm_Sequoia.kext 就是Ventura系统对应的AirportItlwm驱动改名而已！！！
-  2. 上述 IOSkywalkFamily.kext和IO80211FamilyLegacy.kext可以到仓库 [IOSkywalkFamily&IO80211FamilyLegacy](https://github.com/JeoJay127/OCLP-Enhanced/tree/main/payloads/Kexts/Wifi)获取
+  2. 上述 IOSkywalkFamily.kext和IO80211FamilyLegacy.kext可以到仓库 [IOSkywalkFamily&IO80211FamilyLegacy](https://github.com/JeoJay127/OCLP-X/tree/main/payloads/Kexts/Wifi)获取
 
 
 
@@ -127,8 +128,11 @@ Kernel - Block 中新增补丁：
 | IntelBluetoothFirmware.kext      | V2.5.0       | true    | Contents/MacOS/IntelBluetoothFirmware | Contents/Info.plist     |           |           | Any  |
 
 可以从以下仓库下载以上最新kext驱动：
+
 [BlueToolFixup.kext](https://github.com/acidanthera/BrcmPatchRAM/releases)
+
 [IntelBTPatcher.kext](https://github.com/OpenIntelWireless/IntelBluetoothFirmware/releases)
+
 [IntelBluetoothFirmware.kext](https://github.com/OpenIntelWireless/IntelBluetoothFirmware/releases)
 
 ----------

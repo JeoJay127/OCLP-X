@@ -3,7 +3,8 @@
              <h1>OpenCore Legacy Patcher</h1>
 </div>
 
-[中文版本](README_CN.md)
+- **English**
+- [简体中文](./README_CN.md)
 
 An officially modified version of a Python-based project revolving around [Acidanthera's OpenCorePkg](https://github.com/acidanthera/OpenCorePkg) and [Lilu](https://github.com/acidanthera/Lilu) for both running and unlocking features in macOS on supported and unsupported Macs.
 
@@ -67,7 +68,7 @@ Thanks to [zxystd](https://github.com/zxystd) for his contribution! You need the
      Add the following under **NVRAM-Delete-7C436110-AB2A-4BBB-A880-FE41995C9F82**:
      - `boot-args`
      - `csr-active-config`
-    
+   
    - **Restart your Mac once to ensure the above changes take effect.**
 
    **Required Kext Drivers (Maintain the order as listed below):**
@@ -77,6 +78,14 @@ Thanks to [zxystd](https://github.com/zxystd) for his contribution! You need the
    | IOSkywalkFamily.kext              | V1.0         | true    | Contents/MacOS/IOSkywalkFamily      | Contents/Info.plist        | 24.0.0    | 24.99.99  | Any  |
    | IO80211FamilyLegacy.kext          | V1200.12.2b1 | true    | Contents/MacOS/IO80211FamilyLegacy  | Contents/Info.plist        | 24.0.0    | 24.99.99  | Any  |
    | AirportItlwm_Sequoia.kext         | V2.3.0       | true    | Contents/MacOS/AirportItlwm         | Contents/Info.plist        | 24.0.0    | 24.99.99  | Any  |
+
+
+## Note:
+
+   1. **AirportItlwm_Sequoia.kext** is just the **Ventura** version of the **AirportItlwm** driver with a renamed file! 
+   
+   2. The mentioned **IOSkywalkFamily.kext** and **IO80211FamilyLegacy.kext** can be obtained from the repository [IOSkywalkFamily & IO80211FamilyLegacy](https://github.com/JeoJay127/OCLP-X/tree/main/payloads/Kexts/Wifi).
+
 
    **Add the following patch in Kernel - Block:**
 
@@ -126,8 +135,11 @@ Thanks to [zxystd](https://github.com/zxystd) for his contribution! You need the
 | IntelBluetoothFirmware.kext       | V2.5.0      | true    | Contents/MacOS/IntelBluetoothFirmware  | Contents/Info.plist          |           |           | Any  |
 
 You can download these kexts from:
+
 - [BlueToolFixup.kext](https://github.com/acidanthera/BrcmPatchRAM/releases)
+
 - [IntelBTPatcher.kext](https://github.com/OpenIntelWireless/IntelBluetoothFirmware/releases)
+
 - [IntelBluetoothFirmware.kext](https://github.com/OpenIntelWireless/IntelBluetoothFirmware/releases)
 
 

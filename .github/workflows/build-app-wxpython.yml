@@ -73,6 +73,25 @@ jobs:
               exit 1
             fi
 
+      - name: Check if Release Exists
+        id: check_release
+        continue-on-error: true
+        run: |
+          if gh release view v${{ env.new_version }} > /dev/null 2>&1; then
+            echo "release_exists=true" >> $GITHUB_ENV
+          else
+            echo "release_exists=false" >> $GITHUB_ENV
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Existing Release
+        if: env.release_exists == 'true'
+        run: |
+          gh release edit v${{ env.new_version }} --notes-file release_notes.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create GitHub Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
