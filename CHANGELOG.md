@@ -1,5 +1,10 @@
 # OpenCore Legacy Patcher changelog
 
+## 2.3.1
+- Resolve error on OpenCore Vaulted configs
+  - Regression from 2.3.0
+
+
 ## 2.3.0
 - Disable crash analytics
   - Disabled server side for years, removing client side
