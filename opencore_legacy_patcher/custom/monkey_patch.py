@@ -83,7 +83,7 @@ def patch_atheros_ids():
     
     atheros_ids.AtherosWifi = new_atheros_wifi_ids
     
-    print("AtherosWifi have been patched successfully.")
+    print("Atheros WiFi have been patched successfully.")
 
 def patch_broadcom_ids():
 
@@ -124,127 +124,247 @@ def patch_update_url():
     print("Update URL has been permanently patched to:", CUSTOM_REPO_LATEST_RELEASE_URL)
 
 def patch_start_auto_patch_url():
-    import importlib
     from opencore_legacy_patcher.sys_patch.auto_patcher.start import StartAutomaticPatching
-    
+    from opencore_legacy_patcher.support import updates
+    import logging
+    import wx
+    import requests
+    import markdown2
+    from opencore_legacy_patcher.datasets import css_data
+    from opencore_legacy_patcher.wx_gui import gui_support, gui_entry
+    import webbrowser
+    import subprocess
+    from opencore_legacy_patcher.sys_patch.patchsets import HardwarePatchsetDetection, HardwarePatchsetValidation
+    from opencore_legacy_patcher.support import utilities, network_handler
+
     original_start_auto_patch = StartAutomaticPatching.start_auto_patch
 
     def custom_start_auto_patch(self):
-        
-        custom_url = CUSTOM_REPO_LATEST_RELEASE_URL
-    
-        import inspect
-        source_lines = inspect.getsource(original_start_auto_patch).splitlines()
-        new_source_lines = []
-        for line in source_lines:
-            if "url = " in line:
-                
-                indent = line[:len(line) - len(line.lstrip())]
-                
-                new_line = f"{indent}url = '{custom_url}'"
-                new_source_lines.append(new_line)
-            else:
-                new_source_lines.append(line)
-       
-        new_source = '\n'.join(new_source_lines).strip() + '\n'
-        
-        new_code = compile(new_source, '<string>', 'exec')
-    
-        namespace = globals().copy()
-    
-        required_modules = [
-            'wx', 'wx.html2', 'logging', 'plistlib', 'requests', 'markdown2',
-            'subprocess', 'webbrowser', '...constants', '...datasets.css_data',
-            '...wx_gui.gui_entry', '...wx_gui.gui_support',
-            '...support.utilities', '...support.updates',
-            '...support.global_settings', '...support.network_handler',
-            '..patchsets.HardwarePatchsetDetection', '..patchsets.HardwarePatchsetValidation'
-        ]
-    
-        for module_name in required_modules:
-            try:
-                if module_name.startswith('..'):
-                    
-                    module = importlib.import_module(module_name, package=__package__)
-                else:
-                    
-                    module = __import__(module_name)
-                
-                namespace[module_name.split('.')[-1]] = module
-            except ImportError:
-                print(f"Warning: Module {module_name} could not be imported.")
-    
-        exec(new_code, namespace)
-    
-        new_function = namespace['start_auto_patch']
-        
-        return new_function(self)
+        logging.info("- Starting Automatic Patching")
+        if self.constants.wxpython_variant is False:
+            logging.info("- Auto Patch option is not supported on TUI, please use GUI")
+            return
 
-    
+        dict = updates.CheckBinaryUpdates(self.constants).check_binary_updates()
+        if dict:
+            version = dict["Version"]
+            logging.info(f"- Found new version: {version}")
+
+            app = wx.App()
+            mainframe = wx.Frame(None, -1, "OpenCore Legacy Patcher")
+
+            ID_GITHUB = wx.NewId()
+            ID_UPDATE = wx.NewId()
+
+            url = CUSTOM_REPO_LATEST_RELEASE_URL
+            response = requests.get(url).json()
+            try:
+                changelog = response["body"].split("## Asset Information")[0]
+            except:  
+                changelog = """## Unable to fetch changelog
+
+Please check the Github page for more information about this release."""
+
+            html_markdown = markdown2.markdown(changelog, extras=["tables"])
+            html_css = css_data.updater_css
+            frame = wx.Dialog(None, -1, title="", size=(650, 500))
+            frame.SetMinSize((650, 500))
+            frame.SetWindowStyle(wx.STAY_ON_TOP)
+            panel = wx.Panel(frame)
+            sizer = wx.BoxSizer(wx.VERTICAL)
+            sizer.AddSpacer(10)
+            self.title_text = wx.StaticText(panel, label="A new version of OpenCore Legacy Patcher is available!")
+            self.description = wx.StaticText(panel, label=f"OpenCore Legacy Patcher {version}(Modified by JeoJay) is now available! \n You have {self.constants.patcher_version}. Would you like to update?")
+            self.title_text.SetFont(gui_support.font_factory(19, wx.FONTWEIGHT_BOLD))
+            self.description.SetFont(gui_support.font_factory(13, wx.FONTWEIGHT_NORMAL))
+            self.web_view = wx.html2.WebView.New(panel, style=wx.BORDER_SUNKEN)
+            html_code = f'''
+<html>
+    <head>
+        <style>
+            {html_css}
+        </style>
+    </head>
+    <body class="markdown-body">
+        {html_markdown.replace("<a href=", "<a target='_blank' href=")}
+    </body>
+</html>
+'''
+            self.web_view.SetPage(html_code, "")
+            self.web_view.Bind(wx.html2.EVT_WEBVIEW_NEWWINDOW, self._onWebviewNav)
+            self.web_view.EnableContextMenu(False)
+            self.close_button = wx.Button(panel, label="Ignore")
+            self.close_button.Bind(wx.EVT_BUTTON, lambda event: frame.EndModal(wx.ID_CANCEL))
+            self.view_button = wx.Button(panel, ID_GITHUB, label="View on GitHub")
+            self.view_button.Bind(wx.EVT_BUTTON, lambda event: frame.EndModal(ID_GITHUB))
+            self.install_button = wx.Button(panel, label="Download and Install")
+            self.install_button.Bind(wx.EVT_BUTTON, lambda event: frame.EndModal(ID_UPDATE))
+            self.install_button.SetDefault()
+
+            buttonsizer = wx.BoxSizer(wx.HORIZONTAL)
+            buttonsizer.Add(self.close_button, 0, wx.ALIGN_CENTRE | wx.RIGHT, 5)
+            buttonsizer.Add(self.view_button, 0, wx.ALIGN_CENTRE | wx.LEFT|wx.RIGHT, 5)
+            buttonsizer.Add(self.install_button, 0, wx.ALIGN_CENTRE | wx.LEFT, 5)
+            sizer = wx.BoxSizer(wx.VERTICAL)
+            sizer.Add(self.title_text, 0, wx.ALIGN_CENTRE | wx.TOP, 20)
+            sizer.Add(self.description, 0, wx.ALIGN_CENTRE | wx.BOTTOM, 20)
+            sizer.Add(self.web_view, 1, wx.EXPAND | wx.LEFT|wx.RIGHT, 10)
+            sizer.Add(buttonsizer, 0, wx.ALIGN_RIGHT | wx.ALL, 20)
+            panel.SetSizer(sizer)
+            frame.Centre()
+
+            result = frame.ShowModal()
+
+            if result == ID_GITHUB:
+                webbrowser.open(dict["Github Link"])
+            elif result == ID_UPDATE:
+                gui_entry.EntryPoint(self.constants).start(entry=gui_entry.SupportedEntryPoints.UPDATE_APP)
+
+            return
+
+        if utilities.check_seal() is True:
+            logging.info("- Detected Snapshot seal intact, detecting patches")
+            patches = HardwarePatchsetDetection(self.constants).device_properties
+            if not any(not patch.startswith("Settings") and not patch.startswith("Validation") and patches[patch] is True for patch in patches):
+                patches = {}
+            if patches:
+                logging.info("- Detected applicable patches, determining whether possible to patch")
+                if patches[HardwarePatchsetValidation.PATCHING_NOT_POSSIBLE] is True:
+                    logging.info("- Cannot run patching")
+                    return
+
+                logging.info("- Determined patching is possible, checking for OCLP updates")
+                patch_string = ""
+                for patch in patches:
+                    if patches[patch] is True and not patch.startswith("Settings") and not patch.startswith("Validation"):
+                        patch_string += f"- {patch}\n"
+
+                logging.info("- No new binaries found on Github, proceeding with patching")
+
+                warning_str = ""
+                if network_handler.NetworkUtilities(CUSTOM_REPO_LATEST_RELEASE_URL).verify_network_connection() is False:
+                    warning_str = f"""\n\nWARNING: We're unable to verify whether there are any new releases of OpenCore Legacy Patcher on Github. Be aware that you may be using an outdated version for this OS. If you're unsure, verify on Github that OpenCore Legacy Patcher {self.constants.patcher_version} is the latest official release"""
+
+                args = [
+                    "/usr/bin/osascript",
+                    "-e",
+                    f"""display dialog "OpenCore Legacy Patcher has detected you're running without Root Patches, and would like to install them.\n\nmacOS wipes all root patches during OS installs and updates, so they need to be reinstalled.\n\nFollowing Patches have been detected for your system: \n{patch_string}\nWould you like to apply these patches?{warning_str}" """
+                    f'with icon POSIX file "{self.constants.app_icon_path}"',
+                ]
+                output = subprocess.run(
+                    args,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT
+                )
+                if output.returncode == 0:
+                    gui_entry.EntryPoint(self.constants).start(entry=gui_entry.SupportedEntryPoints.SYS_PATCH, start_patching=True)
+                return
+
+            else:
+                logging.info("- No patches detected")
+        else:
+            logging.info("- Detected Snapshot seal not intact, skipping")
+
+        if self._determine_if_versions_match():
+            self._determine_if_boot_matches()
+
     StartAutomaticPatching.start_auto_patch = custom_start_auto_patch
-    print("start_auto_patch method's url has been patched.")
+    print("start_auto_patch method has been patched.")
+
+
 
 def patch_on_update():
-    import importlib
+    import requests
+    import markdown2
+    from opencore_legacy_patcher.datasets import css_data
+    from opencore_legacy_patcher.wx_gui import gui_support, gui_update
+    import wx
+    import webbrowser
     from opencore_legacy_patcher.wx_gui.gui_main_menu import MainFrame
-    
     original_on_update = MainFrame.on_update
 
     def custom_on_update(self, oclp_url: str, oclp_version: str, oclp_github_url: str):
-        
         custom_url = CUSTOM_REPO_LATEST_RELEASE_URL
 
         if "/releases/" in oclp_github_url:
-                parts = oclp_github_url.rsplit('/', 1)
-                if len(parts) == 2 and not parts[1].startswith('v'):
-                    oclp_github_url = f"{parts[0]}/v{parts[1]}"
-        
-        import inspect
-        source_lines = inspect.getsource(original_on_update).splitlines()
-        new_source_lines = []
-        for line in source_lines:
-            if "url = " in line:
-               
-                indent = line[:len(line) - len(line.lstrip())]
-                
-                new_line = f"{indent}url = '{custom_url}'"
-                new_source_lines.append(new_line)
-            else:
-                new_source_lines.append(line)
-        
-        new_source = '\n'.join(new_source_lines).strip() + '\n'
-     
-        new_code = compile(new_source, '<string>', 'exec')
-     
-        namespace = globals().copy()
-     
-        required_modules = [
-            'wx', 'wx.html2', 'sys', 'logging', 'requests', 'markdown2',
-            'threading', 'webbrowser', '..constants', '..support.global_settings',
-            '..support.updates', '..datasets.os_data', '..datasets.css_data',
-            '..wx_gui.gui_build', '..wx_gui.gui_macos_installer_download',
-            '..wx_gui.gui_support', '..wx_gui.gui_help', '..wx_gui.gui_settings',
-            '..wx_gui.gui_sys_patch_display', '..wx_gui.gui_update'
-        ]
-    
-        for module_name in required_modules:
-            try:
-                if module_name.startswith('..'):
-                    
-                    module = importlib.import_module(module_name, package=__package__)
-                else:
-                    
-                    module = __import__(module_name)
-                
-                namespace[module_name.split('.')[-1]] = module
-            except ImportError:
-                print(f"Warning: Module {module_name} could not be imported.")
-    
-        exec(new_code, namespace)
-       
-        new_function = namespace['on_update']
-    
-        return new_function(self, oclp_url, oclp_version, oclp_github_url)
+            parts = oclp_github_url.rsplit('/', 1)
+            if len(parts) == 2 and not parts[1].startswith('v'):
+                oclp_github_url = f"{parts[0]}/v{parts[1]}"
+
+        ID_GITHUB = wx.NewId()
+        ID_UPDATE = wx.NewId()
+
+        response = requests.get(custom_url).json()
+        try:
+            changelog = response["body"].split("## Asset Information")[0]
+        except:
+            changelog = """## Unable to fetch changelog
+
+Please check the Github page for more information about this release."""
+
+        html_markdown = markdown2.markdown(changelog, extras=["tables"])
+        html_css = css_data.updater_css
+        frame = wx.Dialog(None, -1, title="", size=(650, 500))
+        frame.SetMinSize((650, 500))
+        frame.SetWindowStyle(wx.STAY_ON_TOP)
+        panel = wx.Panel(frame)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.AddSpacer(10)
+        title_text = wx.StaticText(panel, label="A new version of OpenCore Legacy Patcher is available!")
+        description = wx.StaticText(panel, label=f"OpenCore Legacy Patcher {oclp_version}(Modified by JeoJay) is now available! \n You have {self.constants.patcher_version}. Would you like to update?")
+        title_text.SetFont(gui_support.font_factory(19, wx.FONTWEIGHT_BOLD))
+        description.SetFont(gui_support.font_factory(13, wx.FONTWEIGHT_NORMAL))
+        web_view = wx.html2.WebView.New(panel, style=wx.BORDER_SUNKEN)
+        html_code = f'''
+<html>
+    <head>
+        <style>
+            {html_css}
+        </style>
+    </head>
+    <body class="markdown-body">
+        {html_markdown.replace("<a href=", "<a target='_blank' href=")}
+    </body>
+</html>
+'''
+        web_view.SetPage(html_code, "")
+        web_view.Bind(wx.html2.EVT_WEBVIEW_NEWWINDOW, self._onWebviewNav)
+        web_view.EnableContextMenu(False)
+        close_button = wx.Button(panel, label="Dismiss")
+        close_button.Bind(wx.EVT_BUTTON, lambda event: frame.EndModal(wx.ID_CANCEL))
+        view_button = wx.Button(panel, ID_GITHUB, label="View on GitHub")
+        view_button.Bind(wx.EVT_BUTTON, lambda event: frame.EndModal(ID_GITHUB))
+        install_button = wx.Button(panel, label="Download and Install")
+        install_button.Bind(wx.EVT_BUTTON, lambda event: frame.EndModal(ID_UPDATE))
+        install_button.SetDefault()
+
+        buttonsizer = wx.BoxSizer(wx.HORIZONTAL)
+        buttonsizer.Add(close_button, 0, wx.ALIGN_CENTRE | wx.RIGHT, 5)
+        buttonsizer.Add(view_button, 0, wx.ALIGN_CENTRE | wx.LEFT|wx.RIGHT, 5)
+        buttonsizer.Add(install_button, 0, wx.ALIGN_CENTRE | wx.LEFT, 5)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(title_text, 0, wx.ALIGN_CENTRE | wx.TOP, 20)
+        sizer.Add(description, 0, wx.ALIGN_CENTRE | wx.BOTTOM, 20)
+        sizer.Add(web_view, 1, wx.EXPAND | wx.LEFT|wx.RIGHT, 10)
+        sizer.Add(buttonsizer, 0, wx.ALIGN_RIGHT | wx.ALL, 20)
+        panel.SetSizer(sizer)
+        frame.Centre()
+
+        result = frame.ShowModal()
+
+        if result == ID_GITHUB:
+            webbrowser.open(oclp_github_url)
+        elif result == ID_UPDATE:
+            gui_update.UpdateFrame(
+                parent=self,
+                title=self.title,
+                global_constants=self.constants,
+                screen_location=self.GetPosition(),
+                url=custom_url,
+                version_label=oclp_version
+            )
+
+        frame.Destroy()
 
     MainFrame.on_update = custom_on_update
     print("on_update method has been patched.")
