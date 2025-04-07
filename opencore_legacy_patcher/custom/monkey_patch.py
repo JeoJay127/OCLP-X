@@ -8,6 +8,8 @@ CUSTOM_REPO = "JeoJay127/OCLP-X"
 
 CUSTOM_REPO_LATEST_RELEASE_URL = f"https://api.github.com/repos/{CUSTOM_REPO}/releases/latest"
 
+import requests
+
 def patch_patcher_version():
     from opencore_legacy_patcher import constants
     Constants = constants.Constants
@@ -17,6 +19,30 @@ def patch_patcher_version():
         original_init(self, *args, **kwargs)
         self.copyright_date = "Copyright © 2020-2025 Dortania(Modified by JeoJay)"
         self.patcher_name = "OCLP(Modified by JeoJay)"
+
+        try:
+            response = requests.get(f'https://raw.githubusercontent.com/{CUSTOM_REPO}/main/CHANGELOG.md')
+            response.raise_for_status()
+            lines = response.text.splitlines()
+            new_version = None
+            for line in lines:
+                if line.startswith('## '):
+                    new_version = line.split(' ')[1]
+                    break
+
+            if new_version:
+                def version_to_tuple(version):
+                    return tuple(map(int, version.split('.')))
+
+                current_version_tuple = version_to_tuple(self.patcher_version)
+                new_version_tuple = version_to_tuple(new_version)
+
+                if new_version_tuple > current_version_tuple:
+                    self.patcher_version = new_version
+
+        except Exception as e:
+            print(f"Failed to fetch the latest version number: {e}")
+            pass
 
     Constants.__init__ = modified_init
     print("Patcher version dynamically set to:", Constants().patcher_version)
