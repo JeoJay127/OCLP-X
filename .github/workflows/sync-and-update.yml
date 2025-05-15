@@ -26,8 +26,8 @@ jobs:
           curl -s https://raw.githubusercontent.com/dortania/OpenCore-Legacy-Patcher/main/CHANGELOG.md -o upstream_CHANGELOG.md
           upstream_version=$(grep -E '^## [0-9]+\.[0-9]+\.[0-9]+' upstream_CHANGELOG.md | head -n 1 | awk '{print $2}')
           curl -s https://raw.githubusercontent.com/${{ github.repository }}/main/CHANGELOG.md -o local_CHANGELOG.md
-          local_version=$(grep -m 1 '## ' local_CHANGELOG.md | cut -d ' ' -f 2)
-
+          local_version=$(grep -E '^## [0-9]+\.[0-9]+\.[0-9]+' local_CHANGELOG.md | head -n 1 | awk '{print $2}')
+                        
           if [ "$local_version" = "$upstream_version" ]; then
             echo "No updates found."
             echo "has_updates=false" >> $GITHUB_OUTPUT

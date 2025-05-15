@@ -1,6 +1,6 @@
 requests
 pyobjc
-wxpython
+wxpython @ https://files.pythonhosted.org/packages/48/20/390530466538829eb8aa75256514d6fd976da2f272a068f4d00f90ab8013/wxPython-4.2.2-cp311-cp311-macosx_10_10_universal2.whl
 pyinstaller
 packaging
 py_sip_xnu

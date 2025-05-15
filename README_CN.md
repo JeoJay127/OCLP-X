@@ -62,8 +62,10 @@ Kernel - Force中新增补丁：
    - SecureBootModel 设置为Disabled，具体操作：Misc -> Security ->SecureBootModel -> Disabled
    - 关闭“文件保险箱”功能：系统设置 > 隐私与安全性 > 文件保险箱 > 关闭
    - 添加NVRAM删除（主要是为了避免重启Reset NVRAM这一步操作），在 NVRAM-Delete-7C436110-AB2A-4BBB-A880-FE41995C9F82 中添加以下值：
-     boot-args
-     csr-active-config
+   
+     - boot-args
+     - csr-active-config
+
    - 重启一次电脑，确保以上操作生效。
 
 需要的kext驱动(注意保持如下顺序)：

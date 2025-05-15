@@ -8,9 +8,9 @@ CUSTOM_REPO = "JeoJay127/OCLP-X"
 
 CUSTOM_REPO_LATEST_RELEASE_URL = f"https://api.github.com/repos/{CUSTOM_REPO}/releases/latest"
 
-import requests
 
 def patch_patcher_version():
+    import requests
     from opencore_legacy_patcher import constants
     Constants = constants.Constants
     original_init = Constants.__init__
