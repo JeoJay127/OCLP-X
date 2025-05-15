@@ -2,6 +2,7 @@
 
 
 * [Application requirements](#application-requirements)
+* [Application versioning](#application-versioning)
 * [How do I make sure I'm all up to date?](#how-do-i-make-sure-i-m-all-up-to-date)
 * [Why are the settings "not saving"?](#why-are-the-settings-not-saving)
 * [Can I use the same USB install media as a universal installer?](#can-i-use-the-same-usb-install-media-as-a-universal-installer)
@@ -26,6 +27,15 @@ The patcher application requires **OS X Yosemite 10.10** or later to run.
 
 The patcher is designed to target **macOS Big Sur 11.x to macOS Sequoia 15.x**.
 * Other versions may work, albeit in a broken state. No support is provided for any version outside of the above.
+
+## Application versioning
+
+Since 1.0.0, OCLP adheres to a proper versioning scheme with major, minor and bug fix system ([Semantic Versioning](https://semver.org/)).
+
+- First digit: Major changes, including new OS support, API changes, and significant patch set changes, etc
+- Second digit: Minor changes, including incoming OS update fixes, minor patch set changes, etc
+- Third digit: Bug fixes, primarily hot fixes either due to a regression in prior release or resolving issues in already released OS updates
+
 
 ## How do I make sure I'm all up to date?
 
@@ -73,7 +83,9 @@ It is extremely recommended to disable automatic updates (even downloading) when
 
 For a related "System version mismatch" error while root patching and more information, refer to [System version mismatch error when root patching](https://dortania.github.io/OpenCore-Legacy-Patcher/TROUBLESHOOTING.html#system-version-mismatch-error-when-root-patching) for troubleshooting.
 
-### Disabling updates
+* Note: macOS Sequoia has begun prompting to enable automatic updates from 15.4 onward after an update install has finished and isn't giving a choice to fully decline, this means you may have to keep doing it again after updating to newer versions.
+
+::: details How to disable updates (click to expand)
 
 **macOS Ventura and newer:**
 
@@ -82,6 +94,8 @@ System Settings -> General -> Software Update -> (i) button next to Automatic Up
 **macOS Big Sur and Monterey:**
 
 System Preferences -> Software Update -> Advanced -> Disable "Download new updates when available".
+
+:::
 
 ## Why are macOS updates so large?
 
@@ -115,7 +129,7 @@ Since macOS Ventura, AVX2 is required from all Macs supported by it. While OCLP 
 
 In essence, this means that some models are now aging rapidly and newer OS won't always provide support for newer applications because of hardware requirements. If an application still supports macOS versions older than Ventura, it may have a chance of running on an older OS version on the old system, since some Macs running them natively don't support AVX2 and the app takes a different path.
 
-Earliest Mac models supporting AVX instruction:
+::: details Earliest Mac models supporting AVX instruction (click to expand)
 
 - Macmini5,x (2011)
 - iMac12,x (2011)
@@ -123,8 +137,9 @@ Earliest Mac models supporting AVX instruction:
 - MacBookAir4,x (2011)
 - MacBook8,x (2015)
 - MacPro6,1 (2013)
+:::
 
-Earliest Mac models supporting AVX2 instruction:
+::: details Earliest Mac models supporting AVX2 instruction (click to expand)
 
 - Macmini7,x (2014)
 - iMac14,x (2013)
@@ -132,28 +147,32 @@ Earliest Mac models supporting AVX2 instruction:
 - MacBookAir6,x (2013)
 - MacBook8,x (2015)
 - MacPro7,1 (2019)
-
+:::
 
 ## What is Metal and Non-Metal?
 
-Metal is Apple's proprietary graphics API which fully superseded OpenGL rendering of the operating system starting from macOS Mojave. When the word "Non-Metal" is used, it describes GPUs that are not Metal supported and require using OpenGL instead.
+Metal is Apple's proprietary graphics API which fully superseded OpenGL rendering of the operating system starting from macOS Mojave. When the word "Non-Metal" is used, it describes GPUs that are not Metal supported and require using OpenGL instead. Due to deprecation of OpenGL, many newer applications may require Metal rendering and as such will fail to run on systems with Non-Metal GPUs. Some built-in apps like Maps and everything relying on it (such as Find My) will fail to render as well on versions later than Big Sur.
 
-GPUs that support Metal are as follows:
+A great rule of thumb is that Macs older than 2012 are non-Metal, with the exception of systems having upgradable GPUs.
+
+::: details Metal supported GPUs (click to expand)
 
 * Intel HD 4000 series (Ivy Bridge/3rd gen) and newer
-* AMD HD 7000 series and newer (GCN 1)
+* AMD HD 7000 series (GCN 1) and newer
 * NVIDIA GTX 600 and 700 series (Kepler)
 
-Everything older than mentioned are Non-Metal and therefore only support OpenGL. A great rule of thumb is that Macs older than 2012 are non-Metal, with the exception of systems with upgradable GPUs. Non-Metal also includes NVIDIA Maxwell (GTX 900 series) and Pascal (GTX 1000 series) when used with patched Web Drivers on newer than macOS High Sierra.
+Everything older than mentioned are Non-Metal and therefore only support OpenGL. Non-Metal also includes NVIDIA Maxwell (GTX 900 series) and Pascal (GTX 1000 series) when used with patched Web Drivers on newer than macOS High Sierra.
 
-Refer to [Supported models](https://dortania.github.io/OpenCore-Legacy-Patcher/MODELS.html) and [Working Around Non-Metal Issues](https://dortania.github.io/OpenCore-Legacy-Patcher/ACCEL.html) pages for more information.
+:::
 
-Due to deprecation of OpenGL, many newer applications may require Metal rendering and as such will fail to run on systems with Non-Metal GPUs.
+Refer to [Supported models,](https://dortania.github.io/OpenCore-Legacy-Patcher/MODELS.html) the [Non-Metal GitHub issue](https://github.com/dortania/OpenCore-Legacy-Patcher/issues/108) and [Working Around Non-Metal Issues](https://dortania.github.io/OpenCore-Legacy-Patcher/ACCEL.html) pages for more information.
 
 
 ## What are FeatureUnlock and mediaanalysisd?
 
 **Important:** These features have the potential to cause instability in many places and as such a decision has been made to disable them by default (mediaanalysisd only on 3802-based* systems) starting from OpenCore Legacy Patcher version 2.1.0.  If you want to enable these features at the risk of additional instability, you can do so in the OCLP settings and rebuilding OpenCore.
+
+FeatureUnlock may also have issues functioning with some OS versions and systems due to race condition during system bootup. If this happens to you, try rebooting multiple times or different (older) OS versions to see if it will remedy the issue.
 
 FeatureUnlock is an extension to enable some macOS features, including:
 - Sidecar

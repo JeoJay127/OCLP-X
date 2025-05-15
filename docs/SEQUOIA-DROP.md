@@ -78,29 +78,8 @@ While USB 1.1 may seem unimportant, it handles many important devices on your sy
 * IR Receivers
 * Bluetooth
 
-Users will need to use a USB hub for installation and post-OS updates when patches are cleaned:
+Refer to [the troubleshooting page](https://dortania.github.io/OpenCore-Legacy-Patcher/TROUBLESHOOTING.html#keyboard-mouse-and-trackpad-not-working-in-installer-or-after-update) on how to workaround this issue.
 
-However, the driver has recently been weakened starting from Sonoma, which means even some USB hubs may not work properly. 
-
-An alternative way is making sure to enable "Remote Login" in General -> Sharing before updating, which will enable SSH. 
-That means you can take control using Terminal in another system by typing `ssh username@lan-ip-address` and your password. 
-
-After that run Post Install Volume Patching by typing `/Applications/OpenCore-Patcher.app/Contents/MacOS/OpenCore-Patcher --patch_sys_vol` and finally `sudo reboot`.
-
-
-![](./images/usb11-chart.png)
-
-::: warning The following systems rely on USB 1.1
-
-* iMac10,x and older
-* Macmini4,1 and older
-* MacBook7,1 and older
-* MacBookAir3,1 and older
-* MacPro5,1 and older
-* Xserve 3,1 and older
-:::
-
-[More information here](https://github.com/dortania/OpenCore-Legacy-Patcher/issues/1021)
 
 ### Graphics support and issues
 This build includes both Legacy Metal and non-Metal patches for macOS Sequoia. Refer to the following links for more information about Legacy Metal and non-Metal support and their respective issues.

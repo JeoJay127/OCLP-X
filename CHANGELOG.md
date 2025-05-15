@@ -1,5 +1,15 @@
 # OpenCore Legacy Patcher changelog
 
+## 2.4.0
+- Reduce CPU usage on main UI thread
+  - Thanks [goneng](https://github.com/goneng) for the implementation!
+- Resolve T1 issues:
+  - coreautha crashes on macOS 14.4 or later
+  - ApplePay on macOS 15.5
+- Resolve USB Camera support on USB 1.1 Macs in macOS Sequoia
+- Increment binaries:
+  - PatcherSupportPkg 1.9.5 - release
+
 ## 2.3.2
 - Resolve erroring in Passwords app and Safari Autofill on T1 Macs running 15.4 or later
 - Increment binaries:

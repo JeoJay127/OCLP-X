@@ -30,10 +30,10 @@ Here are some common errors that users may experience while using this patcher:
 
 ## OpenCore Legacy Patcher not launching
 
-If the application won't launch (e.g. icon will bounce in the Dock), try launching OCLP via Terminal by typing the following command, make sure you've moved the app to `/Applications` before this.
+If the application won't launch (e.g. icon will bounce in the Dock), try launching OCLP via Terminal by typing the following command.
 
 ```sh
-/Applications/OpenCore-Patcher.app/Contents/MacOS/OpenCore-Patcher
+/Library/Application Support/Dortania/OpenCore-Patcher.app/Contents/MacOS/OpenCore-Patcher
 ```
 
 ## "You don't have permission to save..." error when creating USB installer
@@ -108,11 +108,26 @@ There are two ways to to try and resolve this.
 
 ## System version mismatch error when root patching
 
-Updates from now on modify the system volume already while downloading, which can lead to broken patches out of a sudden as well as a "version mismatch" error while root patching, since the operating system gets into a liminal state between two versions. The "version mismatch" error is a safeguard preventing OCLP from patching on a system that is in a weird liminal state, to avoid leading to a very likely boot failure.
+Due to a change by Apple, updates now modify the system volume **already while downloading**, which can lead to broken patches out of a sudden, since the operating system gets into a liminal state between two versions. Hence while root patching, you may get an error that looks like the following: 
 
-Currently there is a "PurgePendingUpdate" tool available [on the Discord server](https://discord.com/channels/417165963327176704/1037474131526029362/1255993208966742108) you can download and then run it in Terminal, to get rid of a pending update. This may be integrated into OCLP later on, however there is currently no ETA.
+`SystemVersion.plist build version mismatch: found 15.4 (24E247), expected 13.7.5 (22H527)`
 
-Disabling automatic macOS updates is extremely recommended once recovered, to prevent it from happening again.
+In this example, it is telling that a version 13.7.5 (Ventura) is expected which is currently running but macOS has already staged an update to version 15.4 (Sequoia) and has already modified the filesystem to prepare for an update, including writing the new version in SystemVersion.plist where OCLP is able to read it from. The "version mismatch" error is a safeguard preventing OCLP from patching on a system that is in a weird liminal state, to avoid leading to a very likely boot failure.
+
+There are few options to resolve it:
+
+1. Update/upgrade to the version already staged.
+2. Reinstall macOS.
+   * You can try doing an in-place install without wiping the disk to keep your data but this may not be possible due to the OS being partially on newer version and it will complain about downgrade.
+4. Use an experimental "PurgePendingUpdate" tool [from the Discord server](https://discord.com/channels/417165963327176704/1253268648324235345/1257348959454625985).
+   * Download it and then run it in Terminal to get rid of a pending update, then repatch again. If "purge failed" appears, you can ignore it.
+   * This may be integrated into OCLP later on, however there is currently no ETA.
+
+**Disabling automatic macOS updates is extremely recommended once recovered, to prevent it from happening again.**
+
+* Note: macOS Sequoia has begun prompting to enable automatic updates from 15.4 onward after an update install has finished and isn't giving a choice to fully decline, this means you may have to keep doing it again after updating to newer versions.
+
+::: details How to disable updates (click to expand)
 
 **macOS Ventura and newer:**
 
@@ -121,6 +136,8 @@ System Settings -> General -> Software Update -> (i) button next to Automatic Up
 **macOS Big Sur and Monterey:**
 
 System Preferences -> Software Update -> Advanced -> Disable "Download new updates when available".
+
+:::
 
 ## Stuck on boot after root patching
 
@@ -282,23 +299,9 @@ The reason for this is that the autopatcher will assume that you will be using t
 
 ## Keyboard, Mouse and Trackpad not working in installer or after update
 
-For Macs using legacy USB 1.1 controllers, OpenCore Legacy Patcher can only restore support once it has performed root volume patches. Thus to install macOS, you need to hook up a USB hub between your Mac and Keyboard/Mouse.
-
-::: warning Note
-
-In macOS Sonoma, this seems to have been further weakened and some hubs may not be functional. 
-
-Alternative way is making sure to enable "Remote Login" in General -> Sharing before updating, which will enable SSH. That means you can take control using Terminal in another system by typing `ssh username@lan-ip-address` and your password. After that run Post Install Volume Patching by typing `/Applications/OpenCore-Patcher.app/Contents/MacOS/OpenCore-Patcher --patch_sys_vol` and finally `sudo reboot`.
-
-:::
-
-
+Starting from macOS Ventura, USB 1.1 drivers are no longer provided in the operating system. For Macs using legacy USB 1.1 controllers, OpenCore Legacy Patcher can only restore support once it has performed root volume patches which restore the drivers. Thus when installing macOS or after an update, you need to hook up a USB hub between your Mac and keyboard/mouse, forcing USB 2.0 mode in order to install the root patches.
 
 * For MacBook users, you'll need to find an external keyboard/mouse in addition to the USB hub
-
-More information can be found here:
-
-* [Legacy UHCI/OHCI support in Ventura #1021](https://github.com/dortania/OpenCore-Legacy-Patcher/issues/1021)
 
 Applicable models include:
 
@@ -311,9 +314,33 @@ Applicable models include:
 | Mac mini    | Mid 2011 and older   | Macmini3,1 - Macmini5,x       |                                                  |
 | Mac Pro     | Mid 2010 and older   | MacPro3,1 - MacPro5,1         |                                                  |
 
+
 <div align="left">
              <img src="./images/usb11-chart.png" alt="USB1.1 chart" width="800" />
 </div>
+
+::: warning Note
+
+In macOS Sonoma, this seems to have been further weakened and some hubs may not be functional. If you encounter this issue, try another hub.
+
+:::
+
+### Alternative method for Software Update
+
+Alternative way for updates is making sure to enable "Remote Login" in General -> Sharing before updating, which will enable SSH. That means you can take control using Terminal in another system and run Post Install Volume Patching. 
+
+**This only applies to updates via Software Update and is not applicable when booting to installer via USB drive.**
+
+Use the following commands:
+
+1. `ssh username@lan-ip-address` - Connects via SSH, change username and IP address to the system's
+2. `/Applications/OpenCore-Patcher.app/Contents/MacOS/OpenCore-Patcher --patch_sys_vol` - Installs root patches via CLI
+3. `sudo reboot`.
+
+More information can be found here:
+
+* [Legacy UHCI/OHCI support in Ventura #1021](https://github.com/dortania/OpenCore-Legacy-Patcher/issues/1021)
+
 
 ## No T1 functionality after installing Sonoma or newer
 

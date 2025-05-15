@@ -33,7 +33,6 @@ For older hardware, see below sections:
 * [Currently Unsupported/Broken Hardware in Ventura](#currently-unsupportedbroken-hardware-in-ventura)
   * [AMD Polaris, Vega and Navi support on pre-2019 Mac Pros and pre-2012 iMacs](#amd-polaris-vega-and-navi-support-on-pre-2019-mac-pros-and-pre-2012-imacs)
   * [USB 1.1 (OHCI/UHCI) Support](#usb-11-ohciuhci-support)
-  * [Ethernet issue with Early 2008 Mac Pro](#ethernet-issue-with-early-2008-mac-pro)
 
 The team is doing their best to investigate and fix the aforementioned issues, however no estimated time can be provided.
 
@@ -64,21 +63,9 @@ For Penryn systems and pre-2013 Mac Pros, USB 1.1 support was outright removed i
 * IR Receivers
 * Bluetooth
 
-With OpenCore Legacy Patcher v0.6.0, basic support has been implemented via Root Volume patching. However due to this, users will need to use a USB hub for installation and post-OS updates when patches are cleaned:
+Refer to [the troubleshooting page](https://dortania.github.io/OpenCore-Legacy-Patcher/TROUBLESHOOTING.html#keyboard-mouse-and-trackpad-not-working-in-installer-or-after-update) on how to workaround this issue.
 
-![](./images/usb11-chart.png)
-
-::: warning The following systems rely on USB 1.1
-
-* iMac10,x and older
-* Macmini3,1 and older
-* MacBook7,1 and older
-* MacBookAir3,1 and older
-* MacBookPro7,1 and older
-  * MacBookPro6,x is exempt
-* MacPro5,1 and older
-
-:::
+### Graphics and wireless support
 
 ::: details Legacy Wireless Support (Resolved in v0.6.0 and newer)
 
