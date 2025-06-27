@@ -1,7 +1,6 @@
-from opencore_legacy_patcher.sys_patch.patchsets.hardware.networking.modern_wireless import ModernWireless
-from opencore_legacy_patcher.custom.intel_wireless import IntelWireless
 from opencore_legacy_patcher.datasets import pci_data
 from opencore_legacy_patcher.detections import device_probe
+
 
 
 CUSTOM_REPO = "JeoJay127/OCLP-X"
@@ -12,14 +11,21 @@ CUSTOM_REPO_LATEST_RELEASE_URL = f"https://api.github.com/repos/{CUSTOM_REPO}/re
 def patch_patcher_version():
     import requests
     from opencore_legacy_patcher import constants
+    from opencore_legacy_patcher.datasets import os_data
     Constants = constants.Constants
-    original_init = Constants.__init__
-
+    orig_init = Constants.__init__
     def modified_init(self, *args, **kwargs):
-        original_init(self, *args, **kwargs)
+        orig_init(self, *args, **kwargs)
         self.copyright_date = "Copyright © 2020-2025 Dortania(Modified by JeoJay)"
         self.patcher_name = "OCLP(Modified by JeoJay)"
-
+        self.legacy_accel_support = [
+            os_data.os_data.big_sur,
+            os_data.os_data.monterey,
+            os_data.os_data.ventura,
+            os_data.os_data.sonoma,
+            os_data.os_data.sequoia,
+            os_data.os_data.tahoe,
+        ]
         try:
             response = requests.get(f'https://raw.githubusercontent.com/{CUSTOM_REPO}/main/CHANGELOG.md')
             response.raise_for_status()
@@ -59,7 +65,9 @@ def patch_commit_info():
     print("generate_commit_info method has been patched.")
 
 def patch_modern_wireless():
-
+    from opencore_legacy_patcher.sys_patch.patchsets.hardware.networking.modern_wireless import ModernWireless
+    from opencore_legacy_patcher.custom.intel_wireless import IntelWireless
+    from opencore_legacy_patcher.datasets.os_data import os_data
     def name(self) -> str:
         """
         Display name for end users
@@ -72,13 +80,14 @@ def patch_modern_wireless():
         else:
             return f"{self.hardware_variant()}: Modern Wi-Fi"
     def patched_present(self) -> bool:
-        
+        if self._xnu_major >= os_data.tahoe.value:
+            return False
         supported_chipsets = {
             device_probe.Broadcom.Chipsets.AirPortBrcm4360,
             device_probe.Broadcom.Chipsets.AirportBrcmNIC,
             device_probe.Broadcom.Chipsets.AirPortBrcmNICThirdParty,
             IntelWireless.Chipsets.IntelWirelessIDs 
-        }
+        } 
 
         wifi = self._computer.wifi 
         
@@ -87,6 +96,49 @@ def patch_modern_wireless():
     ModernWireless.name = name 
     ModernWireless.present = patched_present
     print("ModernWireless class has been patched successfully.")
+
+def patch_legacy_wireless():
+    from opencore_legacy_patcher.sys_patch.patchsets.hardware.networking.legacy_wireless import LegacyWireless
+    from opencore_legacy_patcher.datasets.os_data import os_data
+    def name(self) -> str:
+        """
+        Display name for end users
+        """     
+        if (
+            isinstance(self._computer.wifi, device_probe.Broadcom)
+            and self._computer.wifi.chipset in [device_probe.Broadcom.Chipsets.AirPortBrcm4331, device_probe.Broadcom.Chipsets.AirPortBrcm43224]
+        ):
+            return f"{self.hardware_variant()}: Legacy Broadcom Wi-Fi"
+        elif (
+            isinstance(self._computer.wifi, device_probe.Atheros)
+            and self._computer.wifi.chipset == device_probe.Atheros.Chipsets.AirPortAtheros40
+        ):
+            return f"{self.hardware_variant()}: Legacy Atheros Wi-Fi"
+        else:
+            return f"{self.hardware_variant()}: Legacy Wi-Fi"
+   
+    def present(self) -> bool:
+        """
+        Targeting Legacy Wireless
+        """
+        if self._xnu_major >= os_data.tahoe.value:
+            return False
+        if (
+            isinstance(self._computer.wifi, device_probe.Broadcom)
+            and self._computer.wifi.chipset in [device_probe.Broadcom.Chipsets.AirPortBrcm4331, device_probe.Broadcom.Chipsets.AirPortBrcm43224]
+        ):
+            return True
+
+        if (
+            isinstance(self._computer.wifi, device_probe.Atheros)
+            and self._computer.wifi.chipset == device_probe.Atheros.Chipsets.AirPortAtheros40
+        ):
+            return True
+
+        return False
+    LegacyWireless.name = name 
+    LegacyWireless.present = present
+    print("LegacyWireless has been patched successfully.")
 
 def patch_atheros_ids():
 
@@ -129,7 +181,57 @@ def patch_broadcom_ids():
     
     print("AirPortBrcmNIC have been patched successfully.")
 
+def patch_os_data_with_tahoe():
+    from opencore_legacy_patcher.datasets.os_data import os_data
+    if not hasattr(os_data, 'tahoe'):
+        new_member = int.__new__(os_data, 25)
+        new_member._name_ = 'tahoe'
+        new_member._value_ = 25
+        setattr(os_data, 'tahoe', new_member)
+        os_data._member_map_['tahoe'] = new_member
+        os_data._value2member_map_[25] = new_member
+        os_data._member_names_.append('tahoe')
     
+    print("os_data has been patched successfully.")
+
+def patch_unsupported_host_os() -> bool:
+    from opencore_legacy_patcher.datasets.os_data import os_data
+    from opencore_legacy_patcher.sys_patch.patchsets import HardwarePatchsetDetection
+    def _validation_check_unsupported_host_os(self) -> bool:
+        """
+        Determine if host OS is unsupported
+        """
+        _min_os = os_data.big_sur.value
+        _max_os = os_data.tahoe.value
+        if self._dortania_internal_check() is True:
+            return False
+        if self._xnu_major < _min_os or self._xnu_major > _max_os:
+            return True
+        return False
+
+    HardwarePatchsetDetection._validation_check_unsupported_host_os = _validation_check_unsupported_host_os
+    print("Unsupported host OS has been patched successfully.")
+    
+def patch_modern_audio():
+    from opencore_legacy_patcher import constants
+    from opencore_legacy_patcher.sys_patch.patchsets import detect
+    from opencore_legacy_patcher.custom.modern_audio import ModernAudio
+    HardwarePatchsetDetection = detect.HardwarePatchsetDetection
+    origin_init = HardwarePatchsetDetection.__init__
+    origin_detect = HardwarePatchsetDetection._detect
+    def __init__(self, constants: constants.Constants,
+                 xnu_major: int = None, xnu_minor:  int = None,
+                 os_build:  str = None, os_version: str = None,
+                 validation: bool = False
+                 ) -> None:
+        origin_init(self,constants, xnu_major, xnu_minor, os_build, os_version, validation)
+        if ModernAudio not in self._hardware_variants:
+            self._hardware_variants.append(ModernAudio)
+        origin_detect(self)
+
+    HardwarePatchsetDetection.__init__ = __init__
+    print("ModernAudio has been patched successfully.")
+
 def patch_update_url():
     from opencore_legacy_patcher.support import updates
     
@@ -296,8 +398,6 @@ Please check the Github page for more information about this release."""
 
     StartAutomaticPatching.start_auto_patch = custom_start_auto_patch
     print("start_auto_patch method has been patched.")
-
-
 
 def patch_on_update():
     import requests

@@ -1,5 +1,11 @@
 # OpenCore Legacy Patcher changelog
 
+## 2.6.0
+- macOS Tahoe 添加AppleHDA声卡驱动支持
+- 暂不支持无线网卡驱动(已屏蔽)
+- 添加macOS Taheo 26 Beta2 Metallib库 - MetallibSupportPkg-26.0-25A5295e.pkg (见附件)
+   - (基于3802显卡驱动未测试)
+
 ## 2.4.0
 - Reduce CPU usage on main UI thread
   - Thanks [goneng](https://github.com/goneng) for the implementation!
