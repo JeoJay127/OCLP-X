@@ -26,6 +26,7 @@
 * 支持 Metal 和非 Metal GPU 的图形加速
 * **增强对 macOS Sequoia 上 Intel 无线网卡的支持(修改版支持)** 
 * **新增对 Atheros WiFi 网卡及部分旧款 Broadcom WiFi 网卡 ID 的支持(修改版支持)**
+* **新增AppleHDA音频支持(AppleALC 所需)，支持macOS Tahoe 26 Beta 2 (26.0-25A5295e)及后续版本**
 
 ----------
 

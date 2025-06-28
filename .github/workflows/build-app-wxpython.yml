@@ -31,6 +31,12 @@ jobs:
       - name: Install Dependencies
         run: python3 -m pip install --requirement requirements.txt
 
+      - name: Download Universal-Binaries.dmg
+        run: |
+           rm -f payloads.dmg
+           rm -f Universal-Binaries.dmg
+           aria2c -x 15 https://github.com/JeoJay127/PatcherSupportPkg/releases/download/1.9.6/Universal-Binaries.dmg
+
       - name: Force Universal2 charset for Python
         run: |
           python3 -m pip uninstall -y charset_normalizer
@@ -39,7 +45,7 @@ jobs:
 
       - name: Prepare Build Steps
         run: |
-          python3 Build-Project.command --run-as-individual-steps --reset-dmg-cache --prepare-assets
+          python3 Build-Project.command --run-as-individual-steps --prepare-assets
           python3 Build-Project.command --git-branch "${{ env.branch }}" \
             --git-commit-url "${{ env.commiturl }}" --git-commit-date "${{ env.commitdate }}" \
             --analytics-key "${{ env.ANALYTICS_KEY }}" --analytics-endpoint "${{ env.ANALYTICS_SITE }}" \

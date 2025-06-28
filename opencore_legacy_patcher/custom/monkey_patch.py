@@ -18,6 +18,10 @@ def patch_patcher_version():
         orig_init(self, *args, **kwargs)
         self.copyright_date = "Copyright © 2020-2025 Dortania(Modified by JeoJay)"
         self.patcher_name = "OCLP(Modified by JeoJay)"
+        self.patcher_support_pkg_version = "1.9.6" 
+        self.url_patcher_support_pkg  = "https://github.com/JeoJay127/PatcherSupportPkg/releases/download/"
+        self.guide_link = "https://dortania.github.io/OpenCore-Legacy-Patcher/"
+        self.repo_link = f"https://github.com/{CUSTOM_REPO}"
         self.legacy_accel_support = [
             os_data.os_data.big_sur,
             os_data.os_data.monterey,
