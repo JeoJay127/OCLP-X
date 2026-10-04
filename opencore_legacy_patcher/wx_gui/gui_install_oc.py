@@ -283,10 +283,10 @@ class InstallOCFrame(wx.Frame):
 
         if self.result is True:
             if self.constants.update_stage != gui_support.AutoUpdateStages.INACTIVE and self.constants.detected_os >= os_data.os_data.big_sur:
-                self.constants.update_stage = gui_support.AutoUpdateStages.ROOT_PATCHING
+                self.constants.update_stage = gui_support.AutoUpdateStages.UNPATCHING
                 popup_message = wx.MessageDialog(
                     self,
-                    f"OpenCore has finished installing to disk.\n\nWould you like to update your root patches next?", "Success",
+                    f"OpenCore has finished installing to disk.\n\nWould you like to update your root patches next? This will require a few reboots.", "Success",
                     wx.YES_NO | wx.YES_DEFAULT
                 )
                 popup_message.ShowModal()
@@ -298,6 +298,7 @@ class InstallOCFrame(wx.Frame):
                         global_constants=self.constants,
                         screen_location=self.GetPosition()
                     )
+                    popup_message.ShowModal()
                     self.Destroy()
                 return
 

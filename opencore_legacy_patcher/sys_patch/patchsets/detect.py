@@ -31,6 +31,7 @@ from .hardware.graphics import (
     amd_legacy_gcn,
     amd_polaris,
     amd_vega,
+    amd_navi,
 )
 from .hardware.networking import (
     legacy_wireless,
@@ -39,12 +40,11 @@ from .hardware.networking import (
 from .hardware.misc import (
     display_backlight,
     gmux,
-    keyboard_backlight,
     legacy_audio,
+    modern_audio,
     pcie_webcam,
     t1_security,
     usb11,
-    cpu_missing_avx,
 )
 
 from ... import constants
@@ -89,7 +89,7 @@ class HardwarePatchsetValidation(StrEnum):
     NVDA_DRV_MISSING              = "Validation: nvda_drv(_vrl) variable missing"
     PATCHING_NOT_POSSIBLE         = "Validation: Patching not possible"
     UNPATCHING_NOT_POSSIBLE       = "Validation: Unpatching not possible"
-    REPATCHING_NOT_SUPPORTED      = "Validation: Root volume dirty, unpatch to continue"
+    REPATCHING_NOT_SUPPORTED      = "Validation: Revert first to update or reinstall OCLP patches"
 
 
 class HardwarePatchsetDetection:
@@ -124,18 +124,19 @@ class HardwarePatchsetDetection:
             amd_legacy_gcn.AMDLegacyGCN,
             amd_polaris.AMDPolaris,
             amd_vega.AMDVega,
+            amd_navi.AMDNavi,
 
             legacy_wireless.LegacyWireless,
             modern_wireless.ModernWireless,
 
+            legacy_audio.LegacyAudio,
+            modern_audio.ModernAudio,
+
             display_backlight.DisplayBacklight,
             gmux.GraphicsMultiplexer,
-            keyboard_backlight.KeyboardBacklight,
-            legacy_audio.LegacyAudio,
             pcie_webcam.PCIeFaceTimeCamera,
             t1_security.T1SecurityChip,
             usb11.USB11Controller,
-            cpu_missing_avx.CPUMissingAVX,
         ]
 
         self.device_properties = None
@@ -152,7 +153,7 @@ class HardwarePatchsetDetection:
         Determine if host OS is unsupported
         """
         _min_os = os_data.big_sur.value
-        _max_os = os_data.sequoia.value
+        _max_os = os_data.tahoe.value
         if self._dortania_internal_check() is True:
             return False
         if self._xnu_major < _min_os or self._xnu_major > _max_os:
@@ -186,15 +187,17 @@ class HardwarePatchsetDetection:
         return "FileVault is Off" not in subprocess.run(["/usr/bin/fdesetup", "status"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout.decode()
 
     
-    def _validation_check_repatching_is_possible(self) -> bool:
+    def _validation_check_repatching_not_possible(self) -> bool:
         """
         Determine if repatching is not allowed
         """
         oclp_patch_path = "/System/Library/CoreServices/OpenCore-Legacy-Patcher.plist"
         if not Path(oclp_patch_path).exists():
-            return self._is_root_volume_dirty()
-
-        oclp_plist = plistlib.load(open(oclp_patch_path, "rb"))
+            return False
+        try:
+            oclp_plist = plistlib.load(open(oclp_patch_path, "rb"))
+        except Exception as e:
+            return False
 
         if self._constants.computer.oclp_sys_url != self._constants.commit_info[2]:
             logging.error("Installed patches are from different commit, unpatching is required")
@@ -343,28 +346,6 @@ class HardwarePatchsetDetection:
         Check if MetallibSupportPkg is present
         """
         return metallib_handler.MetalLibraryObject(self._constants, self._os_build, self._os_version).metallib_already_installed
-
-    
-    def _is_root_volume_dirty(self) -> bool:
-        """
-        Determine if system volume is not sealed
-        """
-        # macOS 11.0 introduced sealed system volumes
-        if self._xnu_major < os_data.big_sur.value:
-            return False
-        
-        try:
-            content = plistlib.loads(subprocess.run(["/usr/sbin/diskutil", "info", "-plist", "/"], capture_output=True).stdout)
-        except plistlib.InvalidFileException:
-            raise RuntimeError("Failed to parse diskutil output.")
-
-        seal = content["Sealed"]
-
-        if "Broken" in seal:
-            logging.error(f"System volume is tainted, unpatching is required")
-            return True
-
-        return False
 
 
     def _can_patch(self, requirements: dict, ignore_keys: list[str] = []) -> bool:
@@ -559,7 +540,7 @@ class HardwarePatchsetDetection:
             HardwarePatchsetValidation.SIP_ENABLED:                 self._validation_check_system_integrity_protection_enabled(required_sip_configs),
             HardwarePatchsetValidation.SECURE_BOOT_MODEL_ENABLED:   self._validation_check_secure_boot_model_enabled(),
             HardwarePatchsetValidation.AMFI_ENABLED:                self._validation_check_amfi_enabled(highest_amfi_level),
-            HardwarePatchsetValidation.REPATCHING_NOT_SUPPORTED:    self._validation_check_repatching_is_possible(),
+            HardwarePatchsetValidation.REPATCHING_NOT_SUPPORTED:    self._validation_check_repatching_not_possible(),
             HardwarePatchsetValidation.WHATEVERGREEN_MISSING:       self._validation_check_whatevergreen_missing() if has_nvidia_web_drivers is True else False,
             HardwarePatchsetValidation.FORCE_OPENGL_MISSING:        self._validation_check_force_opengl_missing()  if has_nvidia_web_drivers is True else False,
             HardwarePatchsetValidation.FORCE_COMPAT_MISSING:        self._validation_check_force_compat_missing()  if has_nvidia_web_drivers is True else False,

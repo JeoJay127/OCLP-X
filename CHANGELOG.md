@@ -1,17 +1,32 @@
 # OpenCore Legacy Patcher changelog
 
-## 2.7.0
-- 官方原版所有功能均支持
-- 支持 macOS Tahoe 26 系统 Brcm & Intel 无线网卡 
-- macOS Tahoe 26 添加AppleHDA声卡驱动支持 (从macOS Tahoe 26 Beta 2开始，苹果官方移除了AppleHDA,导致依赖AppleALC的黑苹果声卡无法驱动，通过补丁找回AppleALC声卡驱动支持)
+## 3.0.0
+- Implement macOS Tahoe support (EduCovas & ASentientBot)
+- Implement improved wireless patches (EduCovas)
+- Implement improved non-Metal patches on all operating systems (EduCovas)
+- Restore support for FileVault 2 on macOS 26
+- Add USB mappings for macOS 26
+- Adopt Liquid Glass-conformant app icon
+- Increment Binaries:
+  - OpenCorePkg 1.0.5 - release
+
+## 2.5.1 
+- Fix "Root Volume Dirty" appearing after unpatching
+- Reword "Root Volume Dirty" to be clearer for users
 
 ## 2.5.0
 - Disable repatching a dirty root volume
   - Prevents issues if existing patches are partially overwritten
   - Thanks @crystall1nedev!
 - Add slimmed down patchset for Modern Wireless for macOS Sequoia
+- Move JavaScriptCore patch for pre-AVX Macs to RestrictEvents
+  - Additionally fixes machines without WiFi cards on Sonoma+ as the patch was not applied before
+- Resolve crashing caused by incorrect reported version in CoreImage patch
 - Increment binaries:
-  - PatcherSupportPkg 1.9.6 - release
+  - OpenCorePkg 1.0.4 - release
+  - Lilu 1.7.1 - release
+  - RestrictEvents 1.1.7 - (rolling - b70aaa4)
+  - PatcherSupportPkg 1.9.7 - release
 
 ## 2.4.1
 - Switch installer source to AppleDB
