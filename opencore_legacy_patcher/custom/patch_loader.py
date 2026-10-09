@@ -1,11 +1,12 @@
 import platform
 from . import monkey_patch
 
-def apply_patch_version():
-    monkey_patch.patch_patcher_version()
+def apply_fork_metadata():
+    monkey_patch.patch_fork_metadata()
 
-def apply_commit_info_patch():
-    monkey_patch.patch_commit_info()
+def apply_modern_audio_patch():
+    monkey_patch.patch_modern_audio()
+
 def kernel_major() -> int:
     """
     major kernel version
@@ -38,25 +39,9 @@ def apply_update_patch():
     monkey_patch.patch_on_update()
     monkey_patch.patch_update_url()
 
-def apply_tahoe_patch():
-    monkey_patch.patch_os_data_with_tahoe()
-
-def apply_unsupported_host_os_patch():
-    monkey_patch.patch_unsupported_host_os()
-
-def apply_modern_audio_patch():
-    monkey_patch.patch_modern_audio()
-
-def apply_validation_check_repatching():
-    monkey_patch.patch_validation_check_repatching()
-
 def apply_patch():
-    apply_tahoe_patch()
-    apply_unsupported_host_os_patch()
+    apply_fork_metadata()
     apply_modern_audio_patch()
-    apply_commit_info_patch()
-    apply_patch_version()
-    apply_validation_check_repatching()
     apply_modern_wifi_patch()
     patch_legacy_wifi_patch()
     apply_atheros_patch()

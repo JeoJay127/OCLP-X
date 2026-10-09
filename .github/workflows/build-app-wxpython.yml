@@ -1,6 +1,11 @@
 name: CI - Build wxPython
 
 on:
+  push:
+    tags:
+      - '*'
+  schedule:
+    - cron: '17 2 * * *'
   workflow_dispatch:
 
 permissions:
@@ -15,27 +20,30 @@ jobs:
 
     env:
       branch: ${{ github.ref }}
-      commiturl: ${{ github.event.head_commit.url || github.event.release.html_url }}
-      commitdate: ${{ github.event.head_commit.timestamp || github.event.release.published_at }}
       ANALYTICS_KEY: ${{ secrets.ANALYTICS_KEY }}
       ANALYTICS_SITE: ${{ secrets.ANALYTICS_SITE }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+
+      - name: Validate release tag
+        if: github.ref_type == 'tag'
+        run: |
+          source .github/upstream-preserve.sh
+          oclp_upstream_pathspec
+          git fetch --no-tags --depth=1 https://github.com/dortania/OpenCore-Legacy-Patcher.git "refs/tags/$GITHUB_REF_NAME"
+          if ! git diff --quiet HEAD FETCH_HEAD -- "${OCLP_UPSTREAM_PATHSPEC[@]}"; then
+            echo "Release source differs from upstream tag $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
      
       - name: Install Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11.9'
 
       - name: Install Dependencies
-        run: python3 -m pip install --requirement requirements.txt
-
-      - name: Download Universal-Binaries.dmg
-        run: |
-           rm -f payloads.dmg
-           rm -f Universal-Binaries.dmg
-           aria2c -x 15 https://github.com/JeoJay127/PatcherSupportPkg/releases/download/1.9.6/Universal-Binaries.dmg
+        run: python3 -m pip install --requirement requirements.txt 'wxpython==4.2.2'
 
       - name: Force Universal2 charset for Python
         run: |
@@ -45,67 +53,73 @@ jobs:
 
       - name: Prepare Build Steps
         run: |
+          commiturl="https://github.com/${{ github.repository }}/commit/$(git rev-parse HEAD)"
+          commitdate=$(git show -s --format=%cI HEAD)
           python3 Build-Project.command --run-as-individual-steps --prepare-assets
           python3 Build-Project.command --git-branch "${{ env.branch }}" \
-            --git-commit-url "${{ env.commiturl }}" --git-commit-date "${{ env.commitdate }}" \
+            --git-commit-url "$commiturl" --git-commit-date "$commitdate" \
             --analytics-key "${{ env.ANALYTICS_KEY }}" --analytics-endpoint "${{ env.ANALYTICS_SITE }}" \
             --reset-pyinstaller-cache --run-as-individual-steps --prepare-application
           python3 Build-Project.command --run-as-individual-steps --prepare-package
 
-      - name: Prepare Release 
-        id: parse_version
+      - name: Upload AutoPkg Package to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoPkg-Assets.pkg
+          path: ./dist/AutoPkg-Assets.pkg
+          if-no-files-found: error
+
+      - name: Upload Installation Package to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenCore-Patcher.pkg
+          path: ./dist/OpenCore-Patcher.pkg
+          if-no-files-found: error
+
+      - name: Upload Uninstaller Package to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenCore-Patcher-Uninstaller.pkg
+          path: ./dist/OpenCore-Patcher-Uninstaller.pkg
+          if-no-files-found: error
+
+      - name: Prepare Release
+        if: github.ref_type == 'tag'
         run: |
-           
-            if [[ ! -f CHANGELOG.md ]]; then
-              echo "CHANGELOG.md not found!" >&2
-              exit 1
-            fi
-
-            LATEST_VERSION=$(grep -oE '^## [0-9]+\.[0-9]+\.[0-9]+' CHANGELOG.md | head -1 | awk '{print $2}') || { echo "Failed to retrieve version!" >&2; exit 1; }
-            
-            echo "new_version=$LATEST_VERSION" >> $GITHUB_ENV
-
-            sed -n "/## $LATEST_VERSION/,/## [0-9]\+\.[0-9]\+\.[0-9]\+/ {
-              /## $LATEST_VERSION/! { 
-                /##/ { 
-                  q 
-                }
-                p
-              }
-            }" CHANGELOG.md > release_notes.txt
-
-            if [[ ! -s release_notes.txt ]]; then
-              echo "Failed to extract release notes!" >&2
-              exit 1
-            fi
-
-      - name: Check if Release Exists
-        id: check_release
-        continue-on-error: true
-        run: |
-          if gh release view v${{ env.new_version }} > /dev/null 2>&1; then
-            echo "release_exists=true" >> $GITHUB_ENV
-          else
-            echo "release_exists=false" >> $GITHUB_ENV
+          release_tag="$GITHUB_REF_NAME"
+          base_version="${release_tag%%-*}"
+          base_version="${base_version#v}"
+          upstream_prerelease=$(gh api "repos/dortania/OpenCore-Legacy-Patcher/releases/tags/$release_tag" --jq .prerelease)
+          changelog_notes=$(awk -v version="$base_version" '
+            $1 == "##" && $2 == version { section = 1; next }
+            section && $1 == "##" { exit }
+            section { print }
+          ' CHANGELOG.md)
+          if [[ -z "$changelog_notes" ]]; then
+            echo "No changelog entries for $base_version" >&2
+            exit 1
           fi
+          {
+            printf 'Based on [Dortania OpenCore Legacy Patcher %s](https://github.com/dortania/OpenCore-Legacy-Patcher/releases/tag/%s).\n\n' "$release_tag" "$release_tag"
+            if [[ "$upstream_prerelease" == "true" ]]; then
+              printf 'Dortania marks this upstream version as a pre-release and warns of instability, system crashes, and possible data loss. OCLP-X publishes it as a formal fork release.\n\n'
+            fi
+            printf '%s\n' "$changelog_notes"
+          } > release_notes.txt
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update Existing Release
-        if: env.release_exists == 'true'
-        run: |
-          gh release edit v${{ env.new_version }} --notes-file release_notes.txt
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
 
       - name: Create GitHub Release and Upload Assets
-        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ env.new_version }}
-          name: ${{ env.new_version }}
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           body_path: release_notes.txt
           draft: false
           prerelease: false
+          make_latest: true
+          fail_on_unmatched_files: true
           token: ${{ secrets.GITHUB_TOKEN }}
           files: |
             ./dist/AutoPkg-Assets.pkg

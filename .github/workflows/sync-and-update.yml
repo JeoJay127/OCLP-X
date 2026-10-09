@@ -5,8 +5,13 @@ on:
     branches:
       - main
   schedule:
-    - cron: '0 */3 * * *'
+    - cron: '17 */3 * * *'
   workflow_dispatch:
+    inputs:
+      build:
+        description: Build even when upstream has no new commits
+        type: boolean
+        default: false
   release:
     types: [published]
 
@@ -14,117 +19,84 @@ permissions:
   contents: write
   actions: write
 
+concurrency:
+  group: sync-and-update
+  cancel-in-progress: false
+  queue: max
+
 jobs:
-  check-updates:
-    runs-on: macos-15
-    outputs:
-      has_updates: ${{ steps.check-updates.outputs.has_updates }}
-    steps:
-      - name: Check for updates
-        id: check-updates
-        run: |
-          curl -s https://raw.githubusercontent.com/dortania/OpenCore-Legacy-Patcher/main/CHANGELOG.md -o upstream_CHANGELOG.md
-          upstream_version=$(grep -E '^## [0-9]+\.[0-9]+\.[0-9]+' upstream_CHANGELOG.md | head -n 1 | awk '{print $2}')
-          curl -s https://raw.githubusercontent.com/${{ github.repository }}/main/CHANGELOG.md -o local_CHANGELOG.md
-          local_version=$(grep -E '^## [0-9]+\.[0-9]+\.[0-9]+' local_CHANGELOG.md | head -n 1 | awk '{print $2}')
-                        
-          if [ -z "$upstream_version" ] || [ -z "$local_version" ]; then
-            echo "Failed to extract version numbers from CHANGELOG files"
-            echo "has_updates=false" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-
-          function version_gt() {
-            test "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1"
-          }
-
-          if version_gt "$upstream_version" "$local_version"; then
-            echo "Updates found: Local $local_version -> Upstream $upstream_version"
-            echo "has_updates=true" >> $GITHUB_OUTPUT
-          else
-            echo "No updates found. Local version: $local_version, Upstream version: $upstream_version"
-            echo "has_updates=false" >> $GITHUB_OUTPUT
-          fi
-
   sync-and-build:
-    needs: check-updates
-    if: needs.check-updates.outputs.has_updates == 'true' || github.event_name == 'release'
-    runs-on: macos-15
-    concurrency:
-      group: sync-and-build
-      cancel-in-progress: false
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
+          ref: main
           fetch-depth: 0
 
-      - name: Ensure upstream is set and fetch changes
+      - name: Fetch upstream
         run: |
-          if ! git remote | grep -q "upstream"; then
-            git remote add upstream https://github.com/dortania/OpenCore-Legacy-Patcher.git
-          fi
-          git fetch upstream main
-
-      - name: Remove Git index lock if exists
-        run: |
-          if [ -f .git/index.lock ]; then
-            rm -f .git/index.lock
-            echo "Removed existing .git/index.lock"
-          fi
-          sleep 2  
+          git remote add upstream https://github.com/dortania/OpenCore-Legacy-Patcher.git
+          git fetch origin main
+          git fetch --no-tags upstream main
+          git checkout -B main origin/main
 
       - name: Merge upstream changes
+        id: sync
         run: |
-          git checkout main
-
-          if ! git merge --strategy=recursive -X theirs --no-edit upstream/main; then
-            echo "Merge encountered conflicts, attempting resolution..."
+          source .github/upstream-preserve.sh
+          oclp_upstream_pathspec
+          has_new_commits=false
+          if ! git merge-base --is-ancestor upstream/main HEAD; then
+            has_new_commits=true
           fi
-         
-          if [[ -d .github/ ]]; then
-            git checkout HEAD -- .github/
-            git add .github/
+          has_tree_changes=false
+          if ! git diff --quiet HEAD upstream/main -- "${OCLP_UPSTREAM_PATHSPEC[@]}"; then
+            has_tree_changes=true
           fi
-
-          EXCLUDES=(
-            "opencore_legacy_patcher/custom/"
-            "opencore_legacy_patcher/__init__.py"
-            "ci_tooling/privileged_helper_tool/com.dortania.opencore-legacy-patcher.privileged-helper"
-            "README.md"
-            "README_CN.md"
-            "LICENSE"
-          )
-
-          for exclude in "${EXCLUDES[@]}"; do
-            git checkout --ours "$exclude"
-            git add "$exclude"
-          done
-
-          if git ls-files -u | grep -q "LICENSE.txt"; then
-            git checkout --theirs LICENSE.txt
-            git add LICENSE.txt
+          if [[ "$has_new_commits" == false && "$has_tree_changes" == false ]]; then
+            echo "has_updates=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-
-          git diff --name-only --diff-filter=U | while read -r file; do
-            git checkout --theirs "$file"
-            git add "$file"
-          done
-
-          if ! git diff --cached --quiet; then
-            git commit -m "Merge upstream changes while preserving local modifications"
-          fi
-
-      - name: Push changes to origin
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git push origin main
+          if [[ "$has_new_commits" == true ]]; then
+            git merge --no-commit --no-ff -s ours upstream/main
+          fi
+          git restore --source=upstream/main --staged --worktree --no-overlay -- "${OCLP_UPSTREAM_PATHSPEC[@]}"
+          git commit -m "Merge upstream changes while preserving local modifications"
+          git push origin HEAD:main
+          echo "has_updates=true" >> "$GITHUB_OUTPUT"
 
       - name: Trigger build
-        uses: benc-uk/workflow-dispatch@v1
-        with:
-          workflow: CI - Build wxPython
-          token: ${{ secrets.GITHUB_TOKEN }}
+        if: steps.sync.outputs.has_updates == 'true' || github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.build)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run build-app-wxpython.yml --ref main --repo "$GITHUB_REPOSITORY"
+
+      - name: Publish upstream release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          source .github/upstream-preserve.sh
+          upstream_tag=$(gh api 'repos/dortania/OpenCore-Legacy-Patcher/releases?per_page=20' --jq 'map(select(.draft == false)) | .[0].tag_name // empty')
+          if [[ -z "$upstream_tag" ]]; then
+            exit 0
+          fi
+          git check-ref-format "refs/tags/$upstream_tag"
+          if ! git ls-remote --quiet --exit-code --refs --tags origin "refs/tags/$upstream_tag" >/dev/null; then
+            fork_main_commit=$(git rev-parse HEAD)
+            git fetch --no-tags upstream "refs/tags/$upstream_tag"
+            git switch --detach FETCH_HEAD
+            git restore --source="$fork_main_commit" --staged --worktree --no-overlay -- "${OCLP_PRESERVED_PATHS[@]}"
+            git config user.name "GitHub Actions"
+            git config user.email "actions@github.com"
+            if ! git diff --cached --quiet; then
+              git commit -m "Apply fork customizations to upstream $upstream_tag"
+            fi
+            git tag "$upstream_tag"
+            git push origin "refs/tags/$upstream_tag"
+          fi
+          if ! gh release view "$upstream_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh workflow run build-app-wxpython.yml --ref "$upstream_tag" --repo "$GITHUB_REPOSITORY"
+          fi

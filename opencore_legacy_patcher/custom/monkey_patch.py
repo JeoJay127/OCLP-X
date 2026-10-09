@@ -8,54 +8,47 @@ CUSTOM_REPO = "JeoJay127/OCLP-X"
 CUSTOM_REPO_LATEST_RELEASE_URL = f"https://api.github.com/repos/{CUSTOM_REPO}/releases/latest"
 
 
-def patch_patcher_version():
-    import requests
+def _release_tag(branch):
+    return branch[len("refs/tags/"):] if branch.startswith("refs/tags/") else None
+
+
+def patch_fork_metadata():
+    import sys
     from opencore_legacy_patcher import constants
-    from opencore_legacy_patcher.datasets import os_data
+    from opencore_legacy_patcher.support import commit_info
     Constants = constants.Constants
     origin_init = Constants.__init__
     def modified_init(self, *args, **kwargs):
         origin_init(self, *args, **kwargs)
-        self.copyright_date = "Copyright © 2020-2025 Dortania(Modified by JeoJay)"
         self.patcher_name = "OCLP(Modified by JeoJay)"
-        self.patcher_support_pkg_version = "1.9.6" 
-        self.url_patcher_support_pkg  = "https://github.com/JeoJay127/PatcherSupportPkg/releases/download/"
-        self.guide_link = "https://dortania.github.io/OpenCore-Legacy-Patcher/"
         self.repo_link = f"https://github.com/{CUSTOM_REPO}"
-        self.patcher_version = "2.7.0"
-        self.legacy_accel_support = [
-            os_data.os_data.big_sur,
-            os_data.os_data.monterey,
-            os_data.os_data.ventura,
-            os_data.os_data.sonoma,
-            os_data.os_data.sequoia,
-            os_data.os_data.tahoe,
-        ]
+        branch = commit_info.ParseCommitInfo(sys.executable).generate_commit_info()[0]
+        self.installer_pkg_url = f"{self.repo_link}/releases/download/{_release_tag(branch) or self.patcher_version}/AutoPkg-Assets.pkg"
+        self.installer_pkg_url_nightly = f"http://nightly.link/{CUSTOM_REPO}/workflows/build-app-wxpython/main/AutoPkg-Assets.pkg.zip"
 
     Constants.__init__ = modified_init
-    print("Patcher version dynamically set to:", Constants().patcher_version)
 
-def patch_validation_check_repatching():
+def patch_modern_audio():
+    from opencore_legacy_patcher.sys_patch.patchsets.hardware.misc.modern_audio import ModernAudio
+    from opencore_legacy_patcher.custom.platform_probe import is_hackintosh
+    from opencore_legacy_patcher.datasets.os_data import os_data
 
-    from opencore_legacy_patcher.sys_patch.patchsets import HardwarePatchsetDetection
-    origin_validation_check_repatching_is_possible = HardwarePatchsetDetection._validation_check_repatching_is_possible
-    def _validation_check_repatching_is_possible(self) -> bool: 
-        origin_validation_check_repatching_is_possible(self)
-        return False
+    origin_present = ModernAudio.present
 
-    HardwarePatchsetDetection._validation_check_repatching_is_possible = _validation_check_repatching_is_possible
-    print("_validation_check_repatching_is_possible method has been patched.")
+    def present(self) -> bool:
+        """
+        Extend official audio detection to Hackintosh hosts on Tahoe Beta 2 and later
+        """
+        if (
+            self._xnu_major == os_data.tahoe.value
+            and self.native_os() is False
+            and is_hackintosh(self._constants) is True
+        ):
+            return True
+        return origin_present(self)
 
-def patch_commit_info():
-
-    from opencore_legacy_patcher.support.commit_info import ParseCommitInfo
-    original_generate_commit_info = ParseCommitInfo.generate_commit_info
-    def custom_generate_commit_info(self) -> tuple:
-        result = original_generate_commit_info(self)
-        return ("refs/tags", result[1], result[2])
-
-    ParseCommitInfo.generate_commit_info = custom_generate_commit_info
-    print("generate_commit_info method has been patched.")
+    ModernAudio.present = present
+    print("ModernAudio class has been patched successfully.")
 
 def patch_modern_wireless():
     from opencore_legacy_patcher.sys_patch.patchsets.hardware.networking.modern_wireless import ModernWireless
@@ -174,71 +167,29 @@ def patch_broadcom_ids():
     
     print("AirPortBrcmNIC have been patched successfully.")
 
-def patch_os_data_with_tahoe():
-    from opencore_legacy_patcher.datasets.os_data import os_data
-    if not hasattr(os_data, 'tahoe'):
-        new_member = int.__new__(os_data, 25)
-        new_member._name_ = 'tahoe'
-        new_member._value_ = 25
-        setattr(os_data, 'tahoe', new_member)
-        os_data._member_map_['tahoe'] = new_member
-        os_data._value2member_map_[25] = new_member
-        os_data._member_names_.append('tahoe')
-    
-    print("os_data has been patched successfully.")
-
-def patch_unsupported_host_os() -> bool:
-    from opencore_legacy_patcher.datasets.os_data import os_data
-    from opencore_legacy_patcher.sys_patch.patchsets import HardwarePatchsetDetection
-    def _validation_check_unsupported_host_os(self) -> bool:
-        """
-        Determine if host OS is unsupported
-        """
-        _min_os = os_data.big_sur.value
-        _max_os = os_data.tahoe.value
-        if self._dortania_internal_check() is True:
-            return False
-        if self._xnu_major < _min_os or self._xnu_major > _max_os:
-            return True
-        return False
-
-    HardwarePatchsetDetection._validation_check_unsupported_host_os = _validation_check_unsupported_host_os
-    print("Unsupported host OS has been patched successfully.")
-    
-def patch_modern_audio():
-    from opencore_legacy_patcher import constants
-    from opencore_legacy_patcher.sys_patch.patchsets import detect
-    from opencore_legacy_patcher.custom.modern_audio import ModernAudio
-    HardwarePatchsetDetection = detect.HardwarePatchsetDetection
-    origin_init = HardwarePatchsetDetection.__init__
-    origin_detect = HardwarePatchsetDetection._detect
-    def __init__(self, constants: constants.Constants,
-                 xnu_major: int = None, xnu_minor:  int = None,
-                 os_build:  str = None, os_version: str = None,
-                 validation: bool = False
-                 ) -> None:
-        origin_init(self,constants, xnu_major, xnu_minor, os_build, os_version, validation)
-        if ModernAudio not in self._hardware_variants:
-            self._hardware_variants.append(ModernAudio)
-        origin_detect(self)
-
-    HardwarePatchsetDetection.__init__ = __init__
-    print("ModernAudio has been patched successfully.")
-
 def patch_update_url():
     from opencore_legacy_patcher.support import updates
+    from packaging import version
     
     original_check_binary_updates = updates.CheckBinaryUpdates.check_binary_updates
 
     def custom_check_binary_updates(self):
-        
         updates.REPO_LATEST_RELEASE_URL = CUSTOM_REPO_LATEST_RELEASE_URL
+        release_tag = _release_tag(self.constants.commit_info[0])
+        if release_tag:
+            try:
+                release_version = version.parse(release_tag)
+                if release_version.base_version == self.binary_version.base_version:
+                    self.binary_version = release_version
+            except version.InvalidVersion:
+                pass
 
         result = original_check_binary_updates(self)
 
         if result:
-            
-            result["Github Link"] = result["Github Link"].replace("dortania/OpenCore-Legacy-Patcher", CUSTOM_REPO)
+            release_tag = result["Link"].split("/releases/download/", 1)[1].split("/", 1)[0]
+            result["Version"] = release_tag
+            result["Github Link"] = f"https://github.com/{CUSTOM_REPO}/releases/tag/{release_tag}"
         return result
 
     updates.CheckBinaryUpdates.check_binary_updates = custom_check_binary_updates
@@ -474,7 +425,7 @@ Please check the Github page for more information about this release."""
                 title=self.title,
                 global_constants=self.constants,
                 screen_location=self.GetPosition(),
-                url= f"https://github.com/{CUSTOM_REPO}/releases/download/{oclp_version}/OpenCore-Patcher.pkg",
+                url=oclp_url,
                 version_label=oclp_version
             )
 
