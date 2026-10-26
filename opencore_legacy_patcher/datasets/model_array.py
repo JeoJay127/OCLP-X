@@ -5,6 +5,7 @@ model_array.py: Datasets for different models
 
 SupportedSMBIOS = [
     # MacBook
+    "MacBook4,1",
     "MacBook5,1",
     "MacBook5,2",
     "MacBook6,1",
@@ -112,6 +113,7 @@ SupportedSMBIOS = [
 # Audio
 
 LegacyAudio = [
+    "MacBook4,1",
     "MacBook5,1",
     "MacBook5,2",
     "MacBook6,1",
@@ -196,6 +198,7 @@ ModernGPU = [
 ]
 
 LegacyGPU = [
+    "MacBook4,1",  # Intel X3100
     "MacBook5,1",  # Nvidia 9000
     "MacBook5,2",  # Nvidia 9000
     "MacBook6,1",  # Nvidia 9000
@@ -235,6 +238,7 @@ LegacyGPU = [
 ]
 
 LegacyBrightness = [
+    "MacBook4,1",
     "MacBook5,2",
     "iMac7,1",
     "iMac8,1",
@@ -272,7 +276,48 @@ MacPro = ["MacPro3,1", "MacPro4,1", "MacPro5,1", "Xserve2,1", "Xserve3,1", "Dort
 # MXM iMac
 MXMiMac = ["iMac11,1", "iMac11,2", "iMac11,3", "iMac10,1", "iMac12,1", "iMac12,2", "Dortania1,1"]
 
-NoAGPMSupport = ["MacBookPro4,1", "iMac7,1", "iMac8,1", "MacPro3,1", "Xserve2,1", "Dortania1,1"]
+NoCPUFriendData = [
+    "Macmini1,1",
+    "Macmini2,1",
+    "iMac4,1",
+    "iMac4,2",
+    "iMac5,1",
+    "iMac5,2",
+    "iMac6,1",
+    "iMac7,1",
+    "Xserve1,1",
+    "Xserve2,1",
+    "Dortania1,1",
+]
+
+NoAGPMSupport = [
+    "MacBook1,1",
+    "MacBook2,1",
+    "MacBook3,1",
+    "MacBook4,1",
+    "MacBookAir1,1",
+    "MacBookPro1,1",
+    "MacBookPro1,2",
+    "MacBookPro2,1",
+    "MacBookPro2,2",
+    "MacBookPro3,1",
+    "MacBookPro4,1",
+    "Macmini1,1",
+    "Macmini2,1",
+    "iMac4,1",
+    "iMac4,2",
+    "iMac5,1",
+    "iMac5,2",
+    "iMac6,1",
+    "iMac7,1",
+    "iMac8,1",
+    "MacPro1,1",
+    "MacPro2,1",
+    "MacPro3,1",
+    "Xserve1,1",
+    "Xserve2,1",
+    "Dortania1,1",
+]
 
 AGDPSupport = [
     "MacBookPro9,1",
@@ -294,82 +339,4 @@ AGDPSupport = [
     # "iMac20,2",
     # "iMacPro1,1",
     # "MacPro6,1",
-]
-
-Missing_USB_Map = [
-    "MacBook5,1",
-    "MacBook5,2",
-    "MacBook6,1",
-    "MacBook7,1",
-    "MacBookAir2,1",
-    "MacBookAir3,1",
-    "MacBookAir3,2",
-    "MacBookAir4,1",
-    "MacBookAir4,2",
-    "MacBookPro4,1",
-    "MacBookPro5,1",
-    "MacBookPro5,2",
-    "MacBookPro5,3",
-    "MacBookPro5,4",
-    "MacBookPro5,5",
-    "MacBookPro6,1",
-    "MacBookPro6,2",
-    "MacBookPro7,1",
-    "MacBookPro8,1",
-    "MacBookPro8,2",
-    "MacBookPro8,3",
-    "Macmini3,1",
-    "Macmini4,1",
-    "Macmini5,1",
-    "Macmini5,2",
-    "Macmini5,3",
-    "iMac7,1",
-    "iMac8,1",
-    "iMac9,1",
-    "iMac10,1",
-    "iMac11,1",
-    "iMac11,2",
-    "iMac11,3",
-    "iMac12,1",
-    "iMac12,2",
-    "MacPro3,1",
-    "MacPro4,1",
-    "Xserve2,1",
-    "Xserve3,1",
-]
-
-Missing_USB_Map_Ventura = [
-    "MacBook8,1",
-    "MacBookAir5,1",
-    "MacBookAir5,2",
-    "MacBookAir6,1",
-    "MacBookAir6,2",
-    "MacBookAir7,1",
-    "MacBookAir7,2",
-    "MacBookPro9,1",
-    "MacBookPro9,2",
-    "MacBookPro10,1",
-    "MacBookPro10,2",
-    "MacBookPro11,1",
-    "MacBookPro11,2",
-    "MacBookPro11,3",
-    "MacBookPro11,4",
-    "MacBookPro11,5",
-    "MacBookPro12,1",
-    "MacPro5,1",
-    "MacPro6,1",
-    "Macmini6,1",
-    "Macmini6,2",
-    "Macmini7,1",
-    "iMac13,1",
-    "iMac13,2",
-    "iMac14,1",
-    "iMac14,2",
-    "iMac14,3",
-    "iMac14,4",
-    "iMac15,1",
-    "iMac15,2",
-    "iMac16,1",
-    "iMac16,2",
-    "iMac17,1",
 ]

@@ -731,6 +731,24 @@
 				<key>Arch</key>
 				<string>x86_64</string>
 				<key>Comment</key>
+				<string>AppleIntelPIIXATA Monterey+</string>
+				<key>Enabled</key>
+				<false/>
+				<key>MaxKernel</key>
+				<string></string>
+				<key>MinKernel</key>
+				<string>21.0.0</string>
+				<key>BundlePath</key>
+				<string>AppleIntelPIIXATA-Monterey.kext</string>
+				<key>ExecutablePath</key>
+				<string>Contents/MacOS/AppleIntelPIIXATA</string>
+				<key>PlistPath</key>
+				<string>Contents/Info.plist</string>
+			</dict>
+			<dict>
+				<key>Arch</key>
+				<string>x86_64</string>
+				<key>Comment</key>
 				<string>CPUFriend - Patching X86PlatformPlugin</string>
 				<key>Enabled</key>
 				<false/>
@@ -1315,9 +1333,27 @@
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/NoAVXFSCompressionTypeZlib</string>
 				<key>MaxKernel</key>
-				<string></string>
+				<string>24.99.99</string>
 				<key>MinKernel</key>
 				<string>22.0.0</string>
+				<key>PlistPath</key>
+				<string>Contents/Info.plist</string>
+			</dict>
+			<dict>
+				<key>Arch</key>
+				<string>x86_64</string>
+				<key>BundlePath</key>
+				<string>NoAVXFSCompressionTypeZlib-AVXpel-Tahoe.kext</string>
+				<key>Comment</key>
+				<string>Work-around 26.0+ Zlib kernel panic</string>
+				<key>Enabled</key>
+				<false/>
+				<key>ExecutablePath</key>
+				<string>Contents/MacOS/NoAVXFSCompressionTypeZlib</string>
+				<key>MaxKernel</key>
+				<string></string>
+				<key>MinKernel</key>
+				<string>25.0.0</string>
 				<key>PlistPath</key>
 				<string>Contents/Info.plist</string>
 			</dict>
@@ -3020,9 +3056,11 @@
 				<key>Path</key>
 				<string>OpenRuntime.efi</string>
 				<key>Enabled</key>
-				<false/>
+				<true/>
 				<key>Arguments</key>
 				<string></string>
+				<key>HideVerbose</key>
+				<false/>
 				<key>LoadEarly</key>
 				<false/>
 			</dict>
@@ -3035,6 +3073,8 @@
 				<false/>
 				<key>Arguments</key>
 				<string></string>
+				<key>HideVerbose</key>
+				<false/>
 				<key>LoadEarly</key>
 				<false/>
 			</dict>
@@ -3047,6 +3087,8 @@
 				<false/>
 				<key>Arguments</key>
 				<string></string>
+				<key>HideVerbose</key>
+				<false/>
 				<key>LoadEarly</key>
 				<false/>
 			</dict>
@@ -3059,6 +3101,8 @@
 				<false/>
 				<key>Arguments</key>
 				<string></string>
+				<key>HideVerbose</key>
+				<false/>
 				<key>LoadEarly</key>
 				<false/>
 			</dict>
@@ -3071,6 +3115,8 @@
 				<false/>
 				<key>Arguments</key>
 				<string></string>
+				<key>HideVerbose</key>
+				<false/>
 				<key>LoadEarly</key>
 				<false/>
 			</dict>
@@ -3083,6 +3129,8 @@
 				<false/>
 				<key>Arguments</key>
 				<string></string>
+				<key>HideVerbose</key>
+				<false/>
 				<key>LoadEarly</key>
 				<false/>
 			</dict>
@@ -3095,6 +3143,8 @@
 				<false/>
 				<key>Arguments</key>
 				<string></string>
+				<key>HideVerbose</key>
+				<false/>
 				<key>LoadEarly</key>
 				<false/>
 			</dict>
@@ -3107,6 +3157,8 @@
 				<false/>
 				<key>Arguments</key>
 				<string></string>
+				<key>HideVerbose</key>
+				<false/>
 				<key>LoadEarly</key>
 				<false/>
 			</dict>
@@ -3119,6 +3171,8 @@
 				<false/>
 				<key>Arguments</key>
 				<string></string>
+				<key>HideVerbose</key>
+				<false/>
 				<key>LoadEarly</key>
 				<false/>
 			</dict>
@@ -3131,6 +3185,8 @@
 				<false/>
 				<key>Arguments</key>
 				<string></string>
+				<key>HideVerbose</key>
+				<false/>
 				<key>LoadEarly</key>
 				<false/>
 			</dict>
@@ -3143,6 +3199,8 @@
 				<false/>
 				<key>Arguments</key>
 				<string></string>
+				<key>HideVerbose</key>
+				<false/>
 				<key>LoadEarly</key>
 				<false/>
 			</dict>
@@ -3155,6 +3213,8 @@
 				<false/>
 				<key>Arguments</key>
 				<string></string>
+				<key>HideVerbose</key>
+				<false/>
 				<key>LoadEarly</key>
 				<false/>
 			</dict>
@@ -3167,6 +3227,8 @@
 				<false/>
 				<key>Arguments</key>
 				<string></string>
+				<key>HideVerbose</key>
+				<false/>
 				<key>LoadEarly</key>
 				<false/>
 			</dict>
