@@ -229,7 +229,7 @@ def patch_start_auto_patch_url():
             ID_UPDATE = wx.NewId()
 
             url = CUSTOM_REPO_LATEST_RELEASE_URL
-            response = requests.get(url).json()
+            response = requests.get(url, timeout=30).json()
             try:
                 changelog = response["body"].split("## Asset Information")[0]
             except:  
@@ -359,7 +359,7 @@ def patch_on_update():
         ID_GITHUB = wx.NewId()
         ID_UPDATE = wx.NewId()
 
-        response = requests.get(custom_url).json()
+        response = requests.get(custom_url, timeout=30).json()
         try:
             changelog = response["body"].split("## Asset Information")[0]
         except:
